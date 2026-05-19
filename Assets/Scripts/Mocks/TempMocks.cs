@@ -186,6 +186,10 @@ namespace TMPro
 {
     public class TMP_Text : UnityEngine.UI.Graphic
     {
+        public string text { get; set; } = "";
+    }
+    public class TextMeshProUGUI : UnityEngine.MonoBehaviour
+    {
         public virtual string text { get; set; } = "";
     }
     public class TextMeshProUGUI : TMP_Text

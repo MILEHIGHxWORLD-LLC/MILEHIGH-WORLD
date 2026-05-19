@@ -30,6 +30,7 @@ namespace Milehigh.World.Terminal
         private static WaitForSeconds GetWait(float seconds)
         {
             int ms = Mathf.RoundToInt(seconds * 1000f);
+            if (!_waitCache.TryGetValue(ms, out var wait))
             if (!_waitCache.TryGetValue(ms, out WaitForSeconds wait))
             {
                 wait = new WaitForSeconds(seconds);
@@ -91,6 +92,7 @@ namespace Milehigh.World.Terminal
                 return;
             }
 
+            // 🛡️ Sentinel: Input validation and DoS protection
             // 🛡️ Sentinel: Input validation and DoS protection BEFORE echoing to prevent UI injection.
             // 🛡️ Sentinel: Input validation and DoS protection BEFORE echoing to prevent UI injection (e.g. Rich Text tags).
             if (input.Length > MaxInputLength)
@@ -107,6 +109,8 @@ namespace Milehigh.World.Terminal
                 return;
             }
 
+            // 🎨 Palette: Echo user command to terminal AFTER validation to ensure safe rendering.
+            // 🛡️ Sentinel: Ensures validated input is echoed, preventing UI injection via Rich Text tags.
             // 🎨 Palette: Echo validated user command to terminal.
             WriteToTerminal($"\n<color=#888888>> {input}</color>");
             CleanupInputAfterCommand();
@@ -194,6 +198,7 @@ namespace Milehigh.World.Terminal
             {
                 outputDisplay.maxVisibleCharacters = startVisibleCount + i;
 
+                // ⚡ Bolt: Consolidated rhythmic delay calculation to eliminate redundant resumptions.
                 // ⚡ Bolt: Calculate total delay for this character once to minimize coroutine resumptions.
                 char c = outputDisplay.textInfo.characterInfo[startVisibleCount + i - 1].character;
                 float totalDelay = typingSpeed;
@@ -218,6 +223,7 @@ namespace Milehigh.World.Terminal
                     totalDelay += commaDelay;
                 }
 
+                // ⚡ Bolt: Single zero-allocation yield per character reveal.
                 yield return GetWait(totalDelay);
                     delay = commaDelay;
                 }
