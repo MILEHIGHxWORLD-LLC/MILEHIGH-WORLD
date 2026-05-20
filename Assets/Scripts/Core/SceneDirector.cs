@@ -59,7 +59,7 @@ namespace Milehigh.Core
             if (scenario == null) return;
 
             _objectCache.Clear();
-            foreach (var go in Object.FindObjectsOfType<GameObject>())
+            foreach (var go in UnityEngine.Object.FindObjectsOfType<GameObject>())
             {
                 if (go != null && !string.IsNullOrEmpty(go.name))
                 {
@@ -95,7 +95,7 @@ namespace Milehigh.Core
                 GameObject? prefab = GetPrefab(profile.name);
                 if (prefab != null)
                 {
-                    characterObj = Instantiate(prefab, characterSpawnRoot);
+                    characterObj = UnityEngine.Object.Instantiate(prefab, characterSpawnRoot);
                     characterObj.name = profile.name;
                     _objectCache[profile.name] = characterObj;
                 }
@@ -161,16 +161,22 @@ namespace Milehigh.Core
 
         private void ApplyInteraction(ObjectInteraction interaction)
         {
-            // 🛡️ Sentinel: Prevent Insecure Direct Object Reference (IDOR) by sanitizing untrusted external object IDs
-            if (interaction.objectId == "CampaignManager" || interaction.objectId == "SceneDirector" ||
-                interaction.objectId == "CameraManager" || interaction.objectId == "AlliancePowerManager")
+            // 🛡️ Sentinel: Defensive programming - Null check before access to prevent NRE and stack trace leakage.
+            if (interaction == null || string.IsNullOrEmpty(interaction.objectId)) return;
+
+            // 🛡️ Sentinel: Prevent Insecure Direct Object Reference (IDOR) by sanitizing untrusted external object IDs.
+            // Block access to core architectural singletons that should not be manipulated via campaign data.
+            if (interaction.objectId == "CampaignManager" ||
+                interaction.objectId == "SceneDirector" ||
+                interaction.objectId == "CameraManager" ||
+                interaction.objectId == "AlliancePowerManager" ||
+                interaction.objectId == "CombatManager" ||
+                interaction.objectId == "GlobalResonanceManager" ||
+                interaction.objectId == "BicameralBattleEngine")
             {
                 Debug.LogError($"[Security] Blocked unauthorized interaction attempt to system object: {interaction.objectId}");
                 return;
             }
-
-            GameObject target = GetCachedObject(interaction.objectId);
-            if (interaction == null || string.IsNullOrEmpty(interaction.objectId)) return;
 
             GameObject? target = GetCachedObject(interaction.objectId);
             if (target != null)

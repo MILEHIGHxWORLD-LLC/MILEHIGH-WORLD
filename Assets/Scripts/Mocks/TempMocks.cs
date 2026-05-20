@@ -10,6 +10,9 @@ namespace UnityEngine
         public static T[] FindObjectsOfType<T>() where T : class => new T[0];
         public static void Destroy(Object obj) {}
         public static void DontDestroyOnLoad(Object obj) {}
+        public static T Instantiate<T>(T original, Transform parent) where T : class => null;
+        public static T Instantiate<T>(T original) where T : class => null;
+        public static T Instantiate<T>(T original, Vector3 position, Quaternion rotation) where T : class => null;
     }
     public class MonoBehaviour : Object
     {
@@ -26,9 +29,6 @@ namespace UnityEngine
         public T AddComponent<T>() where T : class => null;
         public void SetActive(bool value) {}
         public static GameObject Find(string name) => null;
-        public static T Instantiate<T>(T original, Transform parent) where T : class => null;
-        public static T Instantiate<T>(T original) where T : class => null;
-        public static T Instantiate<T>(T original, Vector3 position, Quaternion rotation) where T : class => null;
         public GameObject() {}
         public GameObject(string name) {}
         public int GetInstanceID() => 0;
@@ -170,10 +170,6 @@ namespace UnityEngine
         public static bool GetMouseButtonDown(int button) => false;
     }
     public enum KeyCode { Space, Return, UpArrow }
-    public static class Random
-    {
-        public static float Range(float min, float max) => 0;
-    }
 }
 
 namespace UnityEngine.UI
@@ -190,22 +186,12 @@ namespace TMPro
 {
     public class TMP_Text : UnityEngine.UI.Graphic
     {
-        public string text { get; set; } = "";
-    }
-    public class TextMeshProUGUI : UnityEngine.MonoBehaviour
-    {
         public virtual string text { get; set; } = "";
-    }
-    public class TextMeshProUGUI : TMP_Text
-    {
-        public override string text { get; set; } = "";
         public int maxVisibleCharacters { get; set; }
-        public string text { get; set; } = "";
         public TMP_TextInfo textInfo { get; } = new TMP_TextInfo();
     }
     public class TextMeshProUGUI : TMP_Text
     {
-        public int maxVisibleCharacters { get; set; }
         public void ForceMeshUpdate() {}
         public UnityEngine.Material fontMaterial { get; } = new UnityEngine.Material();
         public UnityEngine.RectTransform rectTransform { get; } = new UnityEngine.RectTransform();
@@ -220,11 +206,6 @@ namespace TMPro
         public void MoveTextEnd(bool shift) {}
         public UnityEngine.Transform transform { get; } = new UnityEngine.Transform();
         public UnityEngine.UI.Graphic placeholder { get; set; }
-        public int characterLimit { get; set; }
-    }
-    public class TMP_Text : UnityEngine.UI.Graphic
-    {
-        public string text { get; set; } = "";
     }
     public class TMP_TextInfo
     {
