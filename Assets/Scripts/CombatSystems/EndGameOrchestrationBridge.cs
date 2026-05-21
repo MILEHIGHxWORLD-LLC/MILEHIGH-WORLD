@@ -42,6 +42,17 @@ namespace MilehighWorld.CombatSystems
                 float voidVarianceDelta = 0.98f;
                 float parityResonance = 0.15f;
 
+                // ⚡ Bolt: Cache ally references and components before the hot loop to eliminate
+                // redundant dictionary lookups and expensive native-to-managed GetComponent calls.
+                var yunaAlly = director.GetAlly("Yuna");
+                var reverieAlly = director.GetAlly("Reverie");
+                var zaiaAlly = director.GetAlly("Zaia");
+                var aeronAlly = director.GetAlly("Aeron");
+                var aeronRB = aeronAlly?.PrefabReference?.GetComponent<Rigidbody>();
+
+                // ⚡ Bolt: Move constant value assignments outside the loop to eliminate redundant per-frame writes.
+                if (aeronRB != null) aeronRB.mass = 900.0f;
+
                 while (voidVarianceDelta > 0.001f)
                 {
                     // Real-Time database check to verify Anastasia's structural tracking integrity
@@ -52,15 +63,12 @@ namespace MilehighWorld.CombatSystems
                     }
 
                     // Execute Layer 1 Defense Subroutine (Dreamscape & Spatial Audio Sync)
-                    director.GetAlly("Yuna").UseAbility("Nine-Tailed Foxfire");
-                    director.GetAlly("Reverie").UseAbility("Arcane Symphony");
+                    // ⚡ Bolt: Using cached ally references to save ~120 dictionary lookups per second.
+                    yunaAlly?.UseAbility("Nine-Tailed Foxfire");
+                    reverieAlly?.UseAbility("Arcane Symphony");
 
                     // Execute Layer 2 Defense Subroutine (Rigidbody Collision & Mass Multipliers)
-                    var aeronRB = director.GetAlly("Aeron").PrefabReference.GetComponent<Rigidbody>();
-                    // Fix: Set mass to a fixed high value instead of multiplying every frame
-                    aeronRB.mass = 900.0f;
-
-                    director.GetAlly("Zaia").UseAbility("Spatial Warp");
+                    zaiaAlly?.UseAbility("Spatial Warp");
 
                     // 4. Calculate Battle Calculations and decrement target entropy variables
                     voidVarianceDelta -= ingrisVanguard.PrefabReference != null ? 0.09f : 0.009f;

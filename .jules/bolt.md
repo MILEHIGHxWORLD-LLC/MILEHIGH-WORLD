@@ -81,3 +81,7 @@
 ## 2024-05-16 - Coroutine Resumption Optimization
 **Learning:** In high-frequency Unity coroutines like typewriter effects, each 'yield return' instruction incurs a performance penalty as the Unity coroutine scheduler must manage the suspension and resumption. Consolidating multiple yields (e.g., base speed + punctuation delay) into a single calculated 'yield return GetWait(totalDelay)' per iteration significantly reduces CPU overhead by ~75%.
 **Action:** Always sum cumulative delays within a single loop iteration and yield once to minimize scheduler resumptions.
+
+## 2025-05-18 - Combat Orchestration Reference Caching
+**Learning:** In frame-based combat orchestrators (e.g., EndGameOrchestrationBridge), repeated calls to 'director.GetAlly("Name")' and 'GetComponent<Rigidbody>()' within 'while' loops create significant CPU overhead due to dictionary lookups and native engine bridge crossings. Furthermore, assigning constant values to Rigidbody properties every frame creates redundant memory writes.
+**Action:** Always pre-cache ally references and components outside of frame-based loops. Move any constant property assignments (e.g., mass, drag) outside the loop to eliminate unnecessary per-frame overhead.
