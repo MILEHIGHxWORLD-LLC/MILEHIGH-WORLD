@@ -17,6 +17,8 @@ namespace MilehighWorld.CombatSystems
         [SerializeField] private GameObject delilahTargetMesh;
 
         private static MaterialPropertyBlock? _propBlock;
+        private static readonly int VoidPulseRateId = Shader.PropertyToID("_VoidPulseRate");
+        private static readonly int EmissiveIntensityId = Shader.PropertyToID("_EmissiveIntensity");
 
         public async Task ExecuteDimensionalBridgeAsync(EncounterDirector director, LatticeSynchronizer synchronizer)
         {
@@ -38,6 +40,18 @@ namespace MilehighWorld.CombatSystems
                 NovomindadCharacter ingrisVanguard = new NovomindadCharacter("Ingris", new List<string> { "Plasma Gauntlets", "Phoenix Dive", "Rebirth Protocol" });
                 EnemyCharacter delilahDesolate = director.GetEnemy("Delilah");
 
+                // ⚡ Bolt: Pre-cache ally references and components outside the loop to eliminate O(N) lookups.
+                var yuna = director.GetAlly("Yuna");
+                var reverie = director.GetAlly("Reverie");
+                var aeron = director.GetAlly("Aeron");
+                var zaia = director.GetAlly("Zaia");
+
+                var aeronRB = aeron.PrefabReference.GetComponent<Rigidbody>();
+                // Fix: Set mass to a fixed high value instead of multiplying every frame
+                if (aeronRB != null) aeronRB.mass = 900.0f;
+
+                delilahTargetMesh.TryGetComponent<Renderer>(out var delilahRenderer);
+
                 // 3. Multithreaded Evaluation Loop for Dual-Layer Defense Matrix
                 float voidVarianceDelta = 0.98f;
                 float parityResonance = 0.15f;
@@ -52,27 +66,26 @@ namespace MilehighWorld.CombatSystems
                     }
 
                     // Execute Layer 1 Defense Subroutine (Dreamscape & Spatial Audio Sync)
-                    director.GetAlly("Yuna").UseAbility("Nine-Tailed Foxfire");
-                    director.GetAlly("Reverie").UseAbility("Arcane Symphony");
+                    yuna.UseAbility("Nine-Tailed Foxfire");
+                    reverie.UseAbility("Arcane Symphony");
 
                     // Execute Layer 2 Defense Subroutine (Rigidbody Collision & Mass Multipliers)
-                    var aeronRB = director.GetAlly("Aeron").PrefabReference.GetComponent<Rigidbody>();
-                    // Fix: Set mass to a fixed high value instead of multiplying every frame
-                    aeronRB.mass = 900.0f;
+                    // ⚡ Bolt: Component already cached and mass set outside the loop.
 
-                    director.GetAlly("Zaia").UseAbility("Spatial Warp");
+                    zaia.UseAbility("Spatial Warp");
 
                     // 4. Calculate Battle Calculations and decrement target entropy variables
                     voidVarianceDelta -= ingrisVanguard.PrefabReference != null ? 0.09f : 0.009f;
                     parityResonance += (1.0f - voidVarianceDelta) * 0.077f;
 
                     // Slow down shader pulse parameters on the target mesh using material overrides
-                    if (delilahTargetMesh != null && delilahTargetMesh.TryGetComponent<Renderer>(out var ren))
+                    // ⚡ Bolt: Using cached renderer and Property IDs for O(1) shader updates.
+                    if (delilahRenderer != null)
                     {
-                        ren.GetPropertyBlock(_propBlock);
-                        _propBlock.SetFloat("_VoidPulseRate", voidVarianceDelta);
-                        _propBlock.SetFloat("_EmissiveIntensity", voidVarianceDelta * 3.0f);
-                        ren.SetPropertyBlock(_propBlock);
+                        delilahRenderer.GetPropertyBlock(_propBlock);
+                        _propBlock.SetFloat(VoidPulseRateId, voidVarianceDelta);
+                        _propBlock.SetFloat(EmissiveIntensityId, voidVarianceDelta * 3.0f);
+                        delilahRenderer.SetPropertyBlock(_propBlock);
                     }
 
                     await Task.Yield(); // Yield control to main game loop to preserve rendering frames
