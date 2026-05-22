@@ -59,7 +59,7 @@ namespace Milehigh.Core
             if (scenario == null) return;
 
             _objectCache.Clear();
-            foreach (var go in Object.FindObjectsOfType<GameObject>())
+            foreach (var go in UnityEngine.Object.FindObjectsOfType<GameObject>())
             {
                 if (go != null && !string.IsNullOrEmpty(go.name))
                 {
@@ -95,7 +95,7 @@ namespace Milehigh.Core
                 GameObject? prefab = GetPrefab(profile.name);
                 if (prefab != null)
                 {
-                    characterObj = Instantiate(prefab, characterSpawnRoot);
+                    characterObj = UnityEngine.Object.Instantiate(prefab, characterSpawnRoot);
                     characterObj.name = profile.name;
                     _objectCache[profile.name] = characterObj;
                 }
@@ -161,16 +161,19 @@ namespace Milehigh.Core
 
         private void ApplyInteraction(ObjectInteraction interaction)
         {
-            // 🛡️ Sentinel: Prevent Insecure Direct Object Reference (IDOR) by sanitizing untrusted external object IDs
+            // 🛡️ Sentinel: Defensive programming - ensure interaction is not null.
+            if (interaction == null || string.IsNullOrEmpty(interaction.objectId)) return;
+
+            // 🛡️ Sentinel: Prevent Insecure Direct Object Reference (IDOR) by sanitizing untrusted external object IDs.
+            // Block access to core architectural singletons.
             if (interaction.objectId == "CampaignManager" || interaction.objectId == "SceneDirector" ||
-                interaction.objectId == "CameraManager" || interaction.objectId == "AlliancePowerManager")
+                interaction.objectId == "CameraManager" || interaction.objectId == "AlliancePowerManager" ||
+                interaction.objectId == "CombatManager" || interaction.objectId == "GlobalResonanceManager" ||
+                interaction.objectId == "BicameralBattleEngine")
             {
                 Debug.LogError($"[Security] Blocked unauthorized interaction attempt to system object: {interaction.objectId}");
                 return;
             }
-
-            GameObject target = GetCachedObject(interaction.objectId);
-            if (interaction == null || string.IsNullOrEmpty(interaction.objectId)) return;
 
             GameObject? target = GetCachedObject(interaction.objectId);
             if (target != null)
@@ -181,7 +184,7 @@ namespace Milehigh.Core
                 }
                 else
                 {
-                    target.transform.localScale = Vector3.one * interaction.floatValue;
+                    target.transform.localScale = UnityEngine.Vector3.one * interaction.floatValue;
                 }
             }
         }
