@@ -13,10 +13,14 @@ namespace MilehighWorld.CombatSystems
         private double absoluteTensionBase = 1.4446678659d;
 
         [Header("Entity Allocations")]
-        [SerializeField] private GameObject anastasiaAnchor;
-        [SerializeField] private GameObject delilahTargetMesh;
+        [SerializeFieldAttribute] private GameObject? anastasiaAnchor;
+        [SerializeFieldAttribute] private GameObject? delilahTargetMesh;
 
         private static MaterialPropertyBlock? _propBlock;
+
+        // ⚡ Bolt: Cache shader property IDs to avoid expensive string-to-int lookups in hot loops.
+        private static readonly int VoidPulseRateId = Shader.PropertyToID("_VoidPulseRate");
+        private static readonly int EmissiveIntensityId = Shader.PropertyToID("_EmissiveIntensity");
 
         public async Task ExecuteDimensionalBridgeAsync(EncounterDirector director, LatticeSynchronizer synchronizer)
         {
@@ -29,14 +33,35 @@ namespace MilehighWorld.CombatSystems
             {
                 // 1. Initialize Anastasia's Bridge Trance state
                 var anastasia = director.GetAlly("Anastasia");
-                anastasia.Speak("The dream and the machine are one. Restoring original profile: INGRIS.");
+                if (anastasia != null)
+                {
+                    anastasia.Speak("The dream and the machine are one. Restoring original profile: INGRIS.");
+                }
+
+                // ⚡ Bolt: Pre-fetch allies and components outside the hot loop to reduce dictionary and native calls.
+                var yuna = director.GetAlly("Yuna");
+                var reverie = director.GetAlly("Reverie");
+                var aeron = director.GetAlly("Aeron");
+                var zaia = director.GetAlly("Zaia");
+
+                Rigidbody? aeronRB = null;
+                if (aeron != null && aeron.PrefabReference != null)
+                {
+                    aeronRB = aeron.PrefabReference.GetComponent<Rigidbody>();
+                }
+
+                Renderer? delilahRen = null;
+                if (delilahTargetMesh != null)
+                {
+                    delilahTargetMesh.TryGetComponent<Renderer>(out delilahRen);
+                }
 
                 // Force Absolute Compression Limit on background environment loops
                 Time.timeScale = 0.0777777777f;
 
                 // 2. Instantiate Ingris Archetype into active memory allocation array
                 NovomindadCharacter ingrisVanguard = new NovomindadCharacter("Ingris", new List<string> { "Plasma Gauntlets", "Phoenix Dive", "Rebirth Protocol" });
-                EnemyCharacter delilahDesolate = director.GetEnemy("Delilah");
+                EnemyCharacter? delilahDesolate = director.GetEnemy("Delilah");
 
                 // 3. Multithreaded Evaluation Loop for Dual-Layer Defense Matrix
                 float voidVarianceDelta = 0.98f;
@@ -52,27 +77,32 @@ namespace MilehighWorld.CombatSystems
                     }
 
                     // Execute Layer 1 Defense Subroutine (Dreamscape & Spatial Audio Sync)
-                    director.GetAlly("Yuna").UseAbility("Nine-Tailed Foxfire");
-                    director.GetAlly("Reverie").UseAbility("Arcane Symphony");
+                    // ⚡ Bolt: Using cached ally references to avoid repeated O(1) dictionary lookups.
+                    yuna?.UseAbility("Nine-Tailed Foxfire");
+                    reverie?.UseAbility("Arcane Symphony");
 
                     // Execute Layer 2 Defense Subroutine (Rigidbody Collision & Mass Multipliers)
-                    var aeronRB = director.GetAlly("Aeron").PrefabReference.GetComponent<Rigidbody>();
-                    // Fix: Set mass to a fixed high value instead of multiplying every frame
-                    aeronRB.mass = 900.0f;
+                    // ⚡ Bolt: Using cached Rigidbody to eliminate redundant native engine calls per frame.
+                    if (aeronRB != null)
+                    {
+                        // Fix: Set mass to a fixed high value instead of multiplying every frame
+                        aeronRB.mass = 900.0f;
+                    }
 
-                    director.GetAlly("Zaia").UseAbility("Spatial Warp");
+                    zaia?.UseAbility("Spatial Warp");
 
                     // 4. Calculate Battle Calculations and decrement target entropy variables
                     voidVarianceDelta -= ingrisVanguard.PrefabReference != null ? 0.09f : 0.009f;
                     parityResonance += (1.0f - voidVarianceDelta) * 0.077f;
 
                     // Slow down shader pulse parameters on the target mesh using material overrides
-                    if (delilahTargetMesh != null && delilahTargetMesh.TryGetComponent<Renderer>(out var ren))
+                    // ⚡ Bolt: Using cached Renderer and Property IDs for O(1) shader updates.
+                    if (delilahRen != null)
                     {
-                        ren.GetPropertyBlock(_propBlock);
-                        _propBlock.SetFloat("_VoidPulseRate", voidVarianceDelta);
-                        _propBlock.SetFloat("_EmissiveIntensity", voidVarianceDelta * 3.0f);
-                        ren.SetPropertyBlock(_propBlock);
+                        delilahRen.GetPropertyBlock(_propBlock);
+                        _propBlock.SetFloat(VoidPulseRateId, voidVarianceDelta);
+                        _propBlock.SetFloat(EmissiveIntensityId, voidVarianceDelta * 3.0f);
+                        delilahRen.SetPropertyBlock(_propBlock);
                     }
 
                     await Task.Yield(); // Yield control to main game loop to preserve rendering frames
