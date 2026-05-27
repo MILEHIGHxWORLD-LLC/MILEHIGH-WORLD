@@ -165,6 +165,7 @@ namespace UnityEngine
         public static bool GetKeyDown(KeyCode code) => false;
         public static bool GetMouseButtonDown(int button) => false;
     }
+    public enum KeyCode { Space, Return, UpArrow, Tab, DownArrow }
     public enum KeyCode { Space, Return, UpArrow, DownArrow, Tab }
     public enum KeyCode { Space, Return, UpArrow, DownArrow }
     public enum KeyCode { Space, Return, UpArrow, Tab, DownArrow }
@@ -190,12 +191,14 @@ namespace TMPro
 {
     public class TMP_Text : UnityEngine.UI.Graphic
     {
+        public virtual string text { get; set; } = "";
         public string text { get; set; } = "";
         public int maxVisibleCharacters { get; set; }
     }
     public class TextMeshProUGUI : TMP_Text
     {
         public int maxVisibleCharacters { get; set; }
+        public TMP_TextInfo textInfo { get; } = new TMP_TextInfo();
         public TMP_TextInfo textInfo { get; } = new TMP_TextInfo();
         public virtual string text { get; set; } = "";
         public int maxVisibleCharacters { get; set; }

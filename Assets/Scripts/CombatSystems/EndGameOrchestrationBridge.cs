@@ -17,6 +17,8 @@ namespace MilehighWorld.CombatSystems
         [SerializeFieldAttribute] private GameObject? delilahTargetMesh;
 
         private static MaterialPropertyBlock? _propBlock;
+        private static readonly int VoidPulseRateId = Shader.PropertyToID("_VoidPulseRate");
+        private static readonly int EmissiveIntensityId = Shader.PropertyToID("_EmissiveIntensity");
 
         // ⚡ Bolt: Cache shader property IDs to avoid string lookups in high-frequency loops.
         // ⚡ Bolt: Cache shader property IDs to avoid expensive string-to-int lookups in hot loops.
@@ -65,6 +67,18 @@ namespace MilehighWorld.CombatSystems
                 // 2. Instantiate Ingris Archetype into active memory allocation array
                 NovomindadCharacter ingrisVanguard = new NovomindadCharacter("Ingris", new List<string> { "Plasma Gauntlets", "Phoenix Dive", "Rebirth Protocol" });
                 EnemyCharacter? delilahDesolate = director.GetEnemy("Delilah");
+
+                // ⚡ Bolt: Pre-cache ally references and components outside the loop to eliminate O(N) lookups.
+                var yuna = director.GetAlly("Yuna");
+                var reverie = director.GetAlly("Reverie");
+                var aeron = director.GetAlly("Aeron");
+                var zaia = director.GetAlly("Zaia");
+
+                var aeronRB = aeron.PrefabReference.GetComponent<Rigidbody>();
+                // Fix: Set mass to a fixed high value instead of multiplying every frame
+                if (aeronRB != null) aeronRB.mass = 900.0f;
+
+                delilahTargetMesh.TryGetComponent<Renderer>(out var delilahRenderer);
 
                 // 3. Multithreaded Evaluation Loop for Dual-Layer Defense Matrix
                 float voidVarianceDelta = 0.98f;
@@ -122,6 +136,12 @@ namespace MilehighWorld.CombatSystems
                     }
 
                     // Execute Layer 1 Defense Subroutine (Dreamscape & Spatial Audio Sync)
+                    yuna.UseAbility("Nine-Tailed Foxfire");
+                    reverie.UseAbility("Arcane Symphony");
+
+                    // Execute Layer 2 Defense Subroutine (Rigidbody Collision & Mass Multipliers)
+                    // ⚡ Bolt: Component already cached and mass set outside the loop.
+
                     if (yuna != null) yuna.UseAbility("Nine-Tailed Foxfire");
                     if (reverie != null) reverie.UseAbility("Arcane Symphony");
 
@@ -158,6 +178,13 @@ namespace MilehighWorld.CombatSystems
                     parityResonance += (1.0f - voidVarianceDelta) * 0.077f;
 
                     // Slow down shader pulse parameters on the target mesh using material overrides
+                    // ⚡ Bolt: Using cached renderer and Property IDs for O(1) shader updates.
+                    if (delilahRenderer != null)
+                    {
+                        delilahRenderer.GetPropertyBlock(_propBlock);
+                        _propBlock.SetFloat(VoidPulseRateId, voidVarianceDelta);
+                        _propBlock.SetFloat(EmissiveIntensityId, voidVarianceDelta * 3.0f);
+                        delilahRenderer.SetPropertyBlock(_propBlock);
                     // ⚡ Bolt: Use cached renderer and property IDs to eliminate per-frame lookups.
                     if (targetRenderer != null)
                     {
