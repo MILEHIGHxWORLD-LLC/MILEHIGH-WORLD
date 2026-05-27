@@ -96,6 +96,7 @@ namespace Milehigh.Core
                 if (prefab != null)
                 {
                     characterObj = UnityEngine.Object.Instantiate(prefab, characterSpawnRoot);
+                    characterObj = Object.Instantiate(prefab, characterSpawnRoot);
                     characterObj.name = profile.name;
                     _objectCache[profile.name] = characterObj;
                 }
@@ -172,6 +173,25 @@ namespace Milehigh.Core
                 interaction.objectId == "AlliancePowerManager" ||
                 interaction.objectId == "CombatManager" ||
                 interaction.objectId == "GlobalResonanceManager" ||
+            // 🛡️ Sentinel: Defensive programming - verify parameters are not null.
+            if (interaction == null || string.IsNullOrEmpty(interaction.objectId)) return;
+
+            // 🛡️ Sentinel: Prevent Insecure Direct Object Reference (IDOR) by sanitizing untrusted external object IDs.
+            // Block access to core architectural singletons and managers.
+            // 🛡️ Sentinel: Defensive programming - ensure interaction is not null.
+            if (interaction == null || string.IsNullOrEmpty(interaction.objectId)) return;
+
+            // 🛡️ Sentinel: Prevent Insecure Direct Object Reference (IDOR) by sanitizing untrusted external object IDs.
+            // Block access to core architectural singletons.
+            if (interaction == null || string.IsNullOrEmpty(interaction.objectId)) return;
+
+            // 🛡️ Sentinel: Prevent Insecure Direct Object Reference (IDOR) by sanitizing untrusted external object IDs.
+            // Block critical system managers and architectural singletons from being manipulated via external data.
+            // 🛡️ Sentinel: Prevent Insecure Direct Object Reference (IDOR) by sanitizing untrusted external object IDs
+            // We block core architectural singletons from being manipulated via external data.
+            if (interaction.objectId == "CampaignManager" || interaction.objectId == "SceneDirector" ||
+                interaction.objectId == "CameraManager" || interaction.objectId == "AlliancePowerManager" ||
+                interaction.objectId == "CombatManager" || interaction.objectId == "GlobalResonanceManager" ||
                 interaction.objectId == "BicameralBattleEngine")
             {
                 Debug.LogError($"[Security] Blocked unauthorized interaction attempt to system object: {interaction.objectId}");
@@ -187,7 +207,7 @@ namespace Milehigh.Core
                 }
                 else
                 {
-                    target.transform.localScale = Vector3.one * interaction.floatValue;
+                    target.transform.localScale = UnityEngine.Vector3.one * interaction.floatValue;
                 }
             }
         }
