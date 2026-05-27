@@ -76,6 +76,10 @@
 **Learning:** Code rot, specifically orphaned or malformed conditional blocks, can lead to silent security failures where critical validation logic is bypassed without triggering immediate runtime errors.
 **Prevention:** Regularly audit validation logic for redundancy and ensure that all validation paths are fully covered by unit tests and static analysis. Favor clean, linear validation pipelines over complex, nested, or redundant checks.
 
+## 2026-05-24 - [IDOR and NullReference Leak in SceneDirector]
+**Vulnerability:** `ApplyInteraction` in `SceneDirector.cs` lacked defensive null checks for the `ObjectInteraction` parameter, which could lead to `NullReferenceException` and information leakage via stack traces. Furthermore, the IDOR blocklist was incomplete, omitting several critical system managers.
+**Learning:** Security blocklists must be regularly audited to ensure all core architectural singletons are covered. Additionally, defensive programming is the first line of defense against information disclosure via runtime errors.
+**Prevention:** Ensure all external interaction points have comprehensive null checks at the start of the method. Maintain a centralized or well-audited blocklist for sensitive scene objects.
 ## 2026-05-20 - [IDOR Protection Bypass via Logic Flaws and Code Rot]
 **Vulnerability:** In `SceneDirector.cs`, the `ApplyInteraction` method accessed `interaction.objectId` before performing a null check on `interaction`, and it contained redundant variable declarations that caused compilation failures. Furthermore, the IDOR blocklist was incomplete, leaving several system managers (CombatManager, GlobalResonanceManager, BicameralBattleEngine) vulnerable to unauthorized manipulation.
 **Learning:** Security controls implemented within "rotted" or redundant code are prone to logic errors and bypasses. A security check that crashes the application (via `NullReferenceException`) or fails to compile is as ineffective as no check at all.
