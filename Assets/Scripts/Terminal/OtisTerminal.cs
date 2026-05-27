@@ -4,6 +4,7 @@ using TMPro;
 using System.Collections.Generic;
 using System.Text.RegularExpressions;
 using System.Collections;
+using System.Linq;
 
 namespace Milehigh.World.Terminal
 {
@@ -23,6 +24,7 @@ namespace Milehigh.World.Terminal
 
         private Coroutine? _typewriterCoroutine;
         private string _lastCommand = "";
+        private readonly string[] _availableCommands = { "help", "clear" };
 
         // ⚡ Bolt: Shared cache for WaitForSeconds to eliminate GC allocations during typewriter effects.
         // Using int millisecond keys to avoid floating-point precision issues in dictionary lookups.
@@ -67,13 +69,30 @@ namespace Milehigh.World.Terminal
 
         private void Update()
         {
+            if (commandInput == null || !commandInput.isFocused) return;
+
             // 🎨 Palette: Command History (Up Arrow) to recall previous input
-            if (commandInput != null && commandInput.isFocused && Input.GetKeyDown(KeyCode.UpArrow))
+            if (Input.GetKeyDown(KeyCode.UpArrow))
             {
                 if (!string.IsNullOrEmpty(_lastCommand))
                 {
                     commandInput.text = _lastCommand;
                     commandInput.MoveTextEnd(false);
+                }
+            }
+
+            // 🎨 Palette: Tab Completion
+            if (Input.GetKeyDown(KeyCode.Tab))
+            {
+                string currentInput = commandInput.text.Trim().ToLower();
+                if (!string.IsNullOrEmpty(currentInput))
+                {
+                    string? match = _availableCommands.FirstOrDefault(c => c.StartsWith(currentInput));
+                    if (match != null)
+                    {
+                        commandInput.text = match;
+                        commandInput.MoveTextEnd(false);
+                    }
                 }
             }
         }
@@ -92,6 +111,7 @@ namespace Milehigh.World.Terminal
             string sanitizedInput = input.Replace("<", "&lt;").Replace(">", "&gt;");
 
             // 🛡️ Sentinel: Input validation and DoS protection BEFORE echoing to prevent UI injection (e.g. Rich Text tags).
+            // 🛡️ Sentinel: Input validation and DoS protection BEFORE echoing to prevent UI injection.
             if (input.Length > MaxInputLength)
             {
                 WriteToTerminal($"\n<color=#888888>> {sanitizedInput.Substring(0, 16)}...</color>");
@@ -110,8 +130,8 @@ namespace Milehigh.World.Terminal
 
             // 🎨 Palette: Echo validated user command to terminal.
             WriteToTerminal($"\n<color=#888888>> {input}</color>");
-            CleanupInputAfterCommand();
             _lastCommand = input;
+            CleanupInputAfterCommand();
 
             string[] parts = input.Trim().Split(' ');
             string command = parts[0].ToLower();
@@ -129,7 +149,8 @@ namespace Milehigh.World.Terminal
                 WriteToTerminal("\n<color=#00FF00>[SYSTEM]</color>: <color=#FFFF00>Available Commands:</color>" +
                                 "\n - <color=#00FFFF>help</color>: Show this message." +
                                 "\n - <color=#00FFFF>clear</color>: Clear the terminal display." +
-                                "\n - <color=#00FFFF>[cmd] [arg1] [arg2]</color>: Execute extended system commands.");
+                                "\n - <color=#00FFFF>[cmd] [arg1] [arg2]</color>: Execute extended system commands." +
+                                "\n<color=#888888><i>(Tip: Use Tab for auto-completion and Up Arrow for history)</i></color>");
                 return;
             }
 
@@ -190,6 +211,7 @@ namespace Milehigh.World.Terminal
                 outputDisplay.maxVisibleCharacters = startVisibleCount + i;
 
                 // 🎨 Palette: Rhythmic punctuation pauses for an "analog" terminal feel.
+                // We check the revealed character to pause after it appears.
                 // ⚡ Bolt: Calculate total delay for this character once to minimize coroutine resumptions.
                 char c = outputDisplay.textInfo.characterInfo[startVisibleCount + i - 1].character;
                 float totalDelay = typingSpeed;
