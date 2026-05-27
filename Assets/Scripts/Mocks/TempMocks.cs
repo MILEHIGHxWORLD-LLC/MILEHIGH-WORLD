@@ -99,6 +99,8 @@ namespace UnityEngine
     {
         public static float Clamp01(float value) => value;
         public static int RoundToInt(float value) => (int)value;
+        public static int Clamp(int value, int min, int max) => value < min ? min : (value > max ? max : value);
+        public static float Clamp(float value, float min, float max) => value < min ? min : (value > max ? max : value);
         public const float PI = 3.14159265f;
         public static float Sin(float f) => 0;
     }
@@ -165,6 +167,7 @@ namespace UnityEngine
         public static bool GetKeyDown(KeyCode code) => false;
         public static bool GetMouseButtonDown(int button) => false;
     }
+    public enum KeyCode { Space, Return, UpArrow, DownArrow, Tab }
     public enum KeyCode { Space, Return, UpArrow, Tab, DownArrow }
     public enum KeyCode { Space, Return, UpArrow, DownArrow, Tab }
     public enum KeyCode { Space, Return, UpArrow, DownArrow }
@@ -192,6 +195,12 @@ namespace TMPro
     public class TMP_Text : UnityEngine.UI.Graphic
     {
         public virtual string text { get; set; } = "";
+        public int maxVisibleCharacters { get; set; }
+        public TMP_TextInfo textInfo { get; } = new TMP_TextInfo();
+        public void ForceMeshUpdate() {}
+    }
+    public class TextMeshProUGUI : TMP_Text
+    {
         public string text { get; set; } = "";
         public int maxVisibleCharacters { get; set; }
     }

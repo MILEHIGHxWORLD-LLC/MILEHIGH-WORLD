@@ -23,6 +23,9 @@ namespace Milehigh.World.Terminal
         private static readonly Regex SafeCommandRegex = new Regex(@"^[a-zA-Z0-9\s._\-]+$", RegexOptions.Compiled);
 
         private Coroutine? _typewriterCoroutine;
+        private List<string> _commandHistory = new List<string>();
+        private int _historyIndex = -1;
+
 
         // 🎨 Palette: Multi-command History
         private List<string> _commandHistory = new List<string>();
@@ -82,6 +85,32 @@ namespace Milehigh.World.Terminal
         {
             if (commandInput == null || !commandInput.isFocused) return;
 
+            // 🎨 Palette: Command History (Up/Down Arrow) to recall previous inputs
+            if (Input.GetKeyDown(KeyCode.UpArrow) && _commandHistory.Count > 0)
+            {
+                _historyIndex = Mathf.Clamp(_historyIndex + 1, 0, _commandHistory.Count - 1);
+                commandInput.text = _commandHistory[_commandHistory.Count - 1 - _historyIndex];
+                commandInput.MoveTextEnd(false);
+            }
+            else if (Input.GetKeyDown(KeyCode.DownArrow))
+            {
+                _historyIndex = Mathf.Clamp(_historyIndex - 1, -1, _commandHistory.Count - 1);
+                commandInput.text = _historyIndex == -1 ? "" : _commandHistory[_commandHistory.Count - 1 - _historyIndex];
+                commandInput.MoveTextEnd(false);
+            }
+
+            // 🎨 Palette: Tab Completion for common commands
+            if (Input.GetKeyDown(KeyCode.Tab))
+            {
+                string currentText = commandInput.text.ToLower();
+                if (currentText.StartsWith("h") && !currentText.Equals("help"))
+                {
+                    commandInput.text = "help";
+                    commandInput.MoveTextEnd(false);
+                }
+                else if (currentText.StartsWith("c") && !currentText.Equals("clear"))
+                {
+                    commandInput.text = "clear";
             // 🎨 Palette: Command History Navigation (Up/Down Arrows)
             if (Input.GetKeyDown(KeyCode.UpArrow))
             {
@@ -156,6 +185,12 @@ namespace Milehigh.World.Terminal
 
         public void ProcessCommand(string input)
         {
+            // 🎨 Palette: Reset history index on command submission
+            _historyIndex = -1;
+
+            // 🛡️ Sentinel: Early exit and basic echo for empty input.
+            if (string.IsNullOrWhiteSpace(input))
+            {
             if (newIndex != _historyIndex)
             {
                 _historyIndex = newIndex;
@@ -211,6 +246,9 @@ namespace Milehigh.World.Terminal
                 return;
             }
 
+            // UX Enhancement: Clear input and refocus immediately for better flow
+            CleanupInputAfterCommand();
+
             string sanitizedInput = input.Replace("<", "&lt;").Replace(">", "&gt;");
 
             // 🛡️ Sentinel: Input validation and DoS protection BEFORE echoing to prevent UI injection (e.g. Rich Text tags).
@@ -231,6 +269,12 @@ namespace Milehigh.World.Terminal
                 return;
             }
 
+            // 🎨 Palette: Echo user command to terminal.
+            // 🎨 Palette: Echo user command to terminal AFTER validation to ensure safe rendering.
+            // 🛡️ Sentinel: Ensures validated input is echoed, preventing UI injection via Rich Text tags.
+            // 🎨 Palette: Echo validated user command to terminal and update history.
+            WriteToTerminal($"\n<color=#888888>> {input}</color>");
+            _commandHistory.Add(input);
             WriteToTerminal($"\n<color=#888888>> {input}</color>");
             // 🎨 Palette: Echo validated user command to terminal.
             WriteToTerminal($"\n<color=#888888>> {input}</color>");
@@ -266,6 +310,7 @@ namespace Milehigh.World.Terminal
                                 "\n - <color=#00FFFF>help</color>: Show this message." +
                                 "\n - <color=#00FFFF>clear</color>: Clear the terminal display." +
                                 "\n - <color=#00FFFF>[cmd] [arg1] [arg2]</color>: Execute extended system commands." +
+                                "\n<color=#888888>Tip: Use Tab for completion, Up/Down for history.</color>");
                                 "\n <color=#888888>Tip: Use [Tab] to autocomplete, [Up] for history, [Down] to clear.</color>");
                                 "\n <color=#888888>Tip: Use Up/Down arrows to navigate command history.</color>");
                                 "\n\n<color=#888888>Shortcuts: [Tab] Completion, [Up/Down] History</color>");
