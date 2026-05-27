@@ -23,6 +23,12 @@ namespace Milehigh.World.Terminal
         private static readonly Regex SafeCommandRegex = new Regex(@"^[a-zA-Z0-9\s._\-]+$", RegexOptions.Compiled);
 
         private Coroutine? _typewriterCoroutine;
+
+        // 🎨 Palette: Multi-command History
+        private List<string> _commandHistory = new List<string>();
+        private int _historyIndex = -1;
+
+        // ⚡ Bolt: Cache for WaitForSeconds to eliminate GC allocations during coroutine execution.
         private List<string> _commandHistory = new List<string>();
         private int _historyIndex = -1;
 
@@ -38,7 +44,6 @@ namespace Milehigh.World.Terminal
         private static WaitForSeconds GetWait(float seconds)
         {
             int ms = Mathf.RoundToInt(seconds * 1000f);
-            if (!_waitCache.TryGetValue(ms, out var wait))
             if (!_waitCache.TryGetValue(ms, out WaitForSeconds wait))
             {
                 wait = new WaitForSeconds(seconds);
@@ -77,6 +82,29 @@ namespace Milehigh.World.Terminal
         {
             if (commandInput == null || !commandInput.isFocused) return;
 
+            // 🎨 Palette: Command History Navigation (Up/Down Arrows)
+            if (Input.GetKeyDown(KeyCode.UpArrow))
+            {
+                NavigateHistory(-1);
+            }
+            else if (Input.GetKeyDown(KeyCode.DownArrow))
+            {
+                NavigateHistory(1);
+            }
+        }
+
+        private void NavigateHistory(int direction)
+        {
+            if (_commandHistory.Count == 0) return;
+
+            int newIndex = _historyIndex + direction;
+
+            // Clamp and handle boundary cases
+            if (newIndex >= _commandHistory.Count)
+            {
+                _historyIndex = _commandHistory.Count;
+                commandInput.text = "";
+                return;
             // 🎨 Palette: Command History navigation
             // 🎨 Palette: Command History (Up Arrow) to recall previous input
             if (Input.GetKeyDown(KeyCode.UpArrow))
@@ -108,6 +136,16 @@ namespace Milehigh.World.Terminal
                 string currentInput = commandInput.text.ToLower();
                 if (string.IsNullOrEmpty(currentInput)) return;
 
+            if (newIndex < 0)
+            {
+                newIndex = 0;
+            }
+
+            if (newIndex != _historyIndex)
+            {
+                _historyIndex = newIndex;
+                commandInput.text = _commandHistory[_historyIndex];
+                commandInput.MoveTextEnd(false);
                 if ("help".StartsWith(currentInput))
                 {
                     commandInput.text = "help";
@@ -182,6 +220,13 @@ namespace Milehigh.World.Terminal
             // 🎨 Palette: Echo validated user command to terminal.
             WriteToTerminal($"\n<color=#888888>> {input}</color>");
 
+            // 🎨 Palette: Add to history if unique from the last entry
+            if (_commandHistory.Count == 0 || _commandHistory[_commandHistory.Count - 1] != input)
+            {
+                _commandHistory.Add(input);
+            }
+            _historyIndex = _commandHistory.Count;
+
             // 🎨 Palette: Update command history
             _commandHistory.Add(input);
             _historyIndex = -1;
@@ -206,6 +251,7 @@ namespace Milehigh.World.Terminal
                                 "\n - <color=#00FFFF>help</color>: Show this message." +
                                 "\n - <color=#00FFFF>clear</color>: Clear the terminal display." +
                                 "\n - <color=#00FFFF>[cmd] [arg1] [arg2]</color>: Execute extended system commands." +
+                                "\n <color=#888888>Tip: Use Up/Down arrows to navigate command history.</color>");
                                 "\n\n<color=#888888>Shortcuts: [Tab] Completion, [Up/Down] History</color>");
                                 "\n <color=#888888>(Tip: Use Tab for autocomplete and Up Arrow for history)</color>");
                                 "\n<color=#888888><i>(Tip: Use Tab for auto-completion and Up Arrow for history)</i></color>");
