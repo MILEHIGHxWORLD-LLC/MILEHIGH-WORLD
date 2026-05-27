@@ -10,6 +10,9 @@ namespace UnityEngine
         public static T[] FindObjectsOfType<T>() where T : class => new T[0];
         public static void Destroy(Object obj) {}
         public static void DontDestroyOnLoad(Object obj) {}
+        public static T Instantiate<T>(T original, Transform parent) where T : class => null;
+        public static T Instantiate<T>(T original) where T : class => null;
+        public static T Instantiate<T>(T original, Vector3 position, Quaternion rotation) where T : class => null;
     }
     public class MonoBehaviour : Object
     {
@@ -25,6 +28,7 @@ namespace UnityEngine
         public bool TryGetComponent<T>(out T component) where T : class { component = null!; return false; }
         public T AddComponent<T>() where T : class => null!;
         public void SetActive(bool value) {}
+        public static GameObject Find(string name) => null;
         public static GameObject Find(string name) => null!;
         public static T Instantiate<T>(T original, Transform parent) where T : class => null!;
         public static T Instantiate<T>(T original) where T : class => null!;
@@ -167,6 +171,7 @@ namespace UnityEngine
         public static bool GetKeyDown(KeyCode code) => false;
         public static bool GetMouseButtonDown(int button) => false;
     }
+    public enum KeyCode { Space, Return, UpArrow }
     public enum KeyCode { Space, Return, UpArrow, DownArrow, Tab }
     public enum KeyCode { Space, Return, UpArrow, Tab, DownArrow }
     public enum KeyCode { Space, Return, UpArrow, DownArrow, Tab }
@@ -195,6 +200,7 @@ namespace TMPro
     public class TMP_Text : UnityEngine.UI.Graphic
     {
         public virtual string text { get; set; } = "";
+        public int maxVisibleCharacters { get; set; }
         public int maxVisibleCharacters { get; set; }
         public TMP_TextInfo textInfo { get; } = new TMP_TextInfo();
         public int maxVisibleCharacters { get; set; }

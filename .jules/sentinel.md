@@ -76,6 +76,10 @@
 **Learning:** Code rot, specifically orphaned or malformed conditional blocks, can lead to silent security failures where critical validation logic is bypassed without triggering immediate runtime errors.
 **Prevention:** Regularly audit validation logic for redundancy and ensure that all validation paths are fully covered by unit tests and static analysis. Favor clean, linear validation pipelines over complex, nested, or redundant checks.
 
+## 2026-06-20 - [IDOR and Information Disclosure via Code Rot in SceneDirector]
+**Vulnerability:** Insecure Direct Object Reference (IDOR) and potential stack trace leakage in `SceneDirector.cs`.
+**Learning:** Code rot (duplicate variable declarations and redundant logic) masked missing security controls. `ApplyInteraction` was using unsanitized string IDs to manipulate scene objects, including core architectural managers. Additionally, missing null checks on external `ObjectInteraction` data could trigger `NullReferenceException`, exposing internal stack traces.
+**Prevention:** Implement strict defensive programming by null-checking untrusted input before access. Use an explicit blocklist (or ideally an allowlist) to prevent IDOR attacks on sensitive architectural singletons. Always qualify static Unity method calls (like `UnityEngine.Object.Instantiate`) when working in environments with potential namespace ambiguity or simplified mocks.
 ## 2026-05-24 - [IDOR and NullReference Leak in SceneDirector]
 **Vulnerability:** `ApplyInteraction` in `SceneDirector.cs` lacked defensive null checks for the `ObjectInteraction` parameter, which could lead to `NullReferenceException` and information leakage via stack traces. Furthermore, the IDOR blocklist was incomplete, omitting several critical system managers.
 **Learning:** Security blocklists must be regularly audited to ensure all core architectural singletons are covered. Additionally, defensive programming is the first line of defense against information disclosure via runtime errors.
