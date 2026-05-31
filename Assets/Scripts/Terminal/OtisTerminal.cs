@@ -25,6 +25,7 @@ namespace Milehigh.World.Terminal
         private Coroutine? _typewriterCoroutine;
         private readonly List<string> _commandHistory = new List<string>();
         private int _historyIndex = -1;
+
         private string _lastCommand = "";
         private static readonly string[] _availableCommands = { "help", "clear" };
 
@@ -72,18 +73,27 @@ namespace Milehigh.World.Terminal
         {
             if (commandInput == null || !commandInput.isFocused) return;
 
+            // 🎨 Palette: Command History Navigation (Up/Down Arrows)
+            if (Input.GetKeyDown(KeyCode.UpArrow))
+            {
+                if (_commandHistory.Count > 0)
             // 🎨 Palette: Command History Navigation
             if (Input.GetKeyDown(KeyCode.UpArrow))
             {
                 if (_commandHistory.Count > 0 && _historyIndex < _commandHistory.Count - 1)
                 {
-                    _historyIndex++;
+                    _historyIndex = Mathf.Clamp(_historyIndex + 1, 0, _commandHistory.Count - 1);
                     commandInput.text = _commandHistory[_commandHistory.Count - 1 - _historyIndex];
                     commandInput.MoveTextEnd(false);
                 }
             }
             else if (Input.GetKeyDown(KeyCode.DownArrow))
             {
+                _historyIndex = Mathf.Clamp(_historyIndex - 1, -1, _commandHistory.Count - 1);
+                commandInput.text = _historyIndex == -1 ? "" : _commandHistory[_commandHistory.Count - 1 - _historyIndex];
+                commandInput.MoveTextEnd(false);
+            }
+            // 🎨 Palette: Tab Completion for common commands
                 if (_historyIndex > 0)
                 {
                     _historyIndex--;
@@ -114,7 +124,6 @@ namespace Milehigh.World.Terminal
 
         public void ProcessCommand(string input)
         {
-            // 🛡️ Sentinel: Early exit for empty or whitespace-only input.
             // 🛡️ Sentinel: Early exit and basic echo for empty input.
             if (string.IsNullOrWhiteSpace(input))
             {
@@ -123,12 +132,8 @@ namespace Milehigh.World.Terminal
                 return;
             }
 
-            // UX Enhancement: Clear input and refocus immediately for better flow
-            CleanupInputAfterCommand();
-
             string sanitizedInput = input.Replace("<", "&lt;").Replace(">", "&gt;");
 
-            // 🛡️ Sentinel: Input validation and DoS protection BEFORE echoing to prevent UI injection (e.g. Rich Text tags).
             // 🛡️ Sentinel: Input validation and DoS protection BEFORE echoing to prevent UI injection.
             if (input.Length > MaxInputLength)
             {
@@ -149,14 +154,12 @@ namespace Milehigh.World.Terminal
             // 🎨 Palette: Echo validated user command to terminal and update history.
             WriteToTerminal($"\n<color=#888888>> {input}</color>");
 
-            // 🎨 Palette: Add to history if unique from the last entry
             if (_commandHistory.Count == 0 || _commandHistory[_commandHistory.Count - 1] != input)
             {
                 _commandHistory.Add(input);
             }
             _historyIndex = -1;
 
-            _lastCommand = input;
             CleanupInputAfterCommand();
 
             string[] parts = input.Trim().Split(' ');
@@ -192,6 +195,8 @@ namespace Milehigh.World.Terminal
             }
             else
             {
+                WriteToTerminal($"\n<color=#00FF00>[SYSTEM]</color>: <color=#FF0000>Unknown command: '{parts[0]}'. Type <color=#00FFFF>'help'</color> for options.</color>");
+                StartCoroutine(ShakeInputField());
                 string suggestion = GetFuzzyMatch(parts[0]);
                 string suggestionText = !string.IsNullOrEmpty(suggestion) ? $" Did you mean <color=#00FFFF>'{suggestion}'</color>?" : "";
                 WriteToTerminal($"\n<color=#00FF00>[SYSTEM]</color>: <color=#FF0000>Unknown command: '{parts[0]}'.{suggestionText} Type <color=#00FFFF>'help'</color> for options.</color>");
@@ -277,11 +282,8 @@ namespace Milehigh.World.Terminal
             {
                 outputDisplay.maxVisibleCharacters = startVisibleCount + i;
 
-                // 🎨 Palette: Rhythmic punctuation pauses for an "analog" terminal feel.
-                // We check the revealed character to pause after it appears.
-                // ⚡ Bolt: Calculate total delay for this character once to minimize coroutine resumptions.
                 char c = outputDisplay.textInfo.characterInfo[startVisibleCount + i - 1].character;
-                float delay = typingSpeed;
+                float totalDelay = typingSpeed;
 
                 if (c == '.' || c == '!' || c == '?')
                 {
@@ -295,11 +297,16 @@ namespace Milehigh.World.Terminal
                     if (isEndOfSentence)
                     {
                         bool isEllipsis = (c == '.' && startVisibleCount + i - 2 >= 0 && outputDisplay.textInfo.characterInfo[startVisibleCount + i - 2].character == '.');
-                        delay += isEllipsis ? typingSpeed * 3f : punctuationDelay;
+                        totalDelay += isEllipsis ? typingSpeed * 3f : punctuationDelay;
                     }
                 }
                 else if (c == ',' || c == ':' || c == ';')
                 {
+                    totalDelay += commaDelay;
+                }
+
+                // ⚡ Bolt: Single zero-allocation yield per character reveal via shared cache.
+                yield return GetWait(totalDelay);
                     delay += commaDelay;
                 }
 
