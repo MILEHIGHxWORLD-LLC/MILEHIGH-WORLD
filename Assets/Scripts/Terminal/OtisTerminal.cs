@@ -25,6 +25,9 @@ namespace Milehigh.World.Terminal
         private Coroutine? _typewriterCoroutine;
         private readonly List<string> _commandHistory = new List<string>();
         private int _historyIndex = -1;
+        private List<string> _commandHistory = new List<string>();
+        private int _historyIndex = -1;
+
         private static readonly string[] _availableCommands = { "help", "clear", "history", "infiniteration" };
 
         // ⚡ Bolt: Shared cache for WaitForSeconds to eliminate GC allocations during typewriter effects.
@@ -80,6 +83,24 @@ namespace Milehigh.World.Terminal
             else if (Input.GetKeyDown(KeyCode.DownArrow))
             {
                 NavigateHistory(-1);
+            // 🎨 Palette: Command History Navigation
+            if (Input.GetKeyDown(KeyCode.UpArrow))
+            {
+                if (_commandHistory.Count > 0 && _historyIndex < _commandHistory.Count - 1)
+                {
+                    _historyIndex++;
+                    commandInput.text = _commandHistory[_commandHistory.Count - 1 - _historyIndex];
+                    commandInput.MoveTextEnd(false);
+                }
+            }
+            else if (Input.GetKeyDown(KeyCode.DownArrow))
+            {
+                if (_historyIndex > -1)
+                {
+                    _historyIndex--;
+                    commandInput.text = _historyIndex == -1 ? "" : _commandHistory[_commandHistory.Count - 1 - _historyIndex];
+                    commandInput.MoveTextEnd(false);
+                }
             }
             // 🎨 Palette: Tab Completion
             else if (Input.GetKeyDown(KeyCode.Tab))
@@ -99,6 +120,7 @@ namespace Milehigh.World.Terminal
             else if (Input.GetKeyDown(KeyCode.Escape))
             {
                 commandInput.text = "";
+                commandInput.ActivateInputField();
             }
             // 🎨 Palette: Ctrl+L to clear terminal screen
             else if ((Input.GetKey(KeyCode.LeftControl) || Input.GetKey(KeyCode.RightControl)) && Input.GetKeyDown(KeyCode.L))
@@ -127,8 +149,8 @@ namespace Milehigh.World.Terminal
 
         public void ProcessCommand(string input)
         {
-            // 🎨 Palette: Reset history index on command submission
             _historyIndex = -1;
+
             if (string.IsNullOrWhiteSpace(input))
             {
                 WriteToTerminal("\n<color=#888888>></color>");
@@ -138,12 +160,15 @@ namespace Milehigh.World.Terminal
 
             // 🛡️ Sentinel: Input validation and DoS protection BEFORE echoing to prevent UI injection.
             string sanitizedInput = input.Replace("<", "&lt;").Replace(">", "&gt;");
+            // 🛡️ Sentinel: Input validation and DoS protection
             if (input.Length > MaxInputLength)
             {
                 WriteToTerminal("\n<color=#FF0000>[SECURITY]</color>: Input exceeds maximum length.");
                 CleanupInputAfterCommand();
                 return;
             }
+
+            string sanitizedInput = input.Replace("<", "&lt;").Replace(">", "&gt;");
 
             if (!SafeCommandRegex.IsMatch(input))
             {
@@ -156,6 +181,10 @@ namespace Milehigh.World.Terminal
             // 🎨 Palette: Echo validated user command to terminal.
             WriteToTerminal($"\n<color=#888888>> {sanitizedInput}</color>");
             if (_commandHistory.Count == 0 || _commandHistory[_commandHistory.Count - 1] != input)
+            // 🛡️ Sentinel: Echo sanitized input
+            WriteToTerminal($"\n<color=#888888>> {sanitizedInput}</color>");
+
+            if (_commandHistory.Count == 0 || _commandHistory.Last() != input)
             {
                 _commandHistory.Add(input);
             }
@@ -164,6 +193,10 @@ namespace Milehigh.World.Terminal
             string command = parts[0].ToLower();
 
             if (command == "clear") ClearTerminal();
+            if (command == "clear")
+            {
+                ClearTerminal();
+            }
             else if (command == "history")
             {
                 string historyOutput = "\n<color=#00FF00>[SYSTEM]</color>: <color=#FFFF00>Command History:</color>";
@@ -180,11 +213,26 @@ namespace Milehigh.World.Terminal
                                 "\n - <color=#00FFFF>infiniteration</color>: Execute engine algorithm." +
                                 "\n\n<color=#888888>Shortcuts: [Tab] Completion, [Up/Down] History, [Esc] Clear Line, [Ctrl+L] Clear Screen</color>");
             }
+            else if (command == "infiniteration")
+            {
+                ExecuteInfiniteration();
+            }
+            else if (parts.Length >= 3)
+            {
+                int index = input.IndexOf(parts[2]);
+                if (index != -1)
+                {
+                    string argument = input.Substring(index);
+                    ExecuteExtendedCommand(parts[0], argument);
+                    WriteToTerminal($"\n<color=#00FF00>[SYSTEM]</color>: Command '{parts[0]}' executed.");
+                }
+            }
             else if (command == "infiniteration") ExecuteInfiniteration();
             else
             {
                 // 🎨 Palette: Fuzzy Matching for unknown commands.
                 string suggestion = GetFuzzyMatch(command);
+                string suggestion = GetFuzzyMatch(parts[0]);
                 string suggestionText = !string.IsNullOrEmpty(suggestion) ? $" Did you mean <color=#00FFFF>'{suggestion}'</color>?" : "";
                 WriteToTerminal($"\n<color=#00FF00>[SYSTEM]</color>: <color=#FF0000>Unknown command: '{command}'.{suggestionText} Type <color=#00FFFF>'help'</color> for options.</color>");
                 if (commandInput != null) StartCoroutine(ShakeInputField());
@@ -205,6 +253,7 @@ namespace Milehigh.World.Terminal
         {
             string bestMatch = "";
             int minDistance = 3;
+
             foreach (string cmd in _availableCommands)
             {
                 int dist = GetLevenshteinDistance(input.ToLower(), cmd);
@@ -243,6 +292,8 @@ namespace Milehigh.World.Terminal
             outputDisplay.ForceMeshUpdate();
             int startCount = outputDisplay.textInfo.characterCount;
             outputDisplay.maxVisibleCharacters = startCount;
+            int startVisibleCount = outputDisplay.textInfo.characterCount;
+
             outputDisplay.text += message;
             outputDisplay.ForceMeshUpdate();
             int endCount = outputDisplay.textInfo.characterCount;
@@ -257,6 +308,22 @@ namespace Milehigh.World.Terminal
                     if (startCount + i < endCount)
                         if (!char.IsWhiteSpace(outputDisplay.textInfo.characterInfo[startCount + i].character)) isEnd = false;
                     if (isEnd) totalDelay += (c == '.' && startCount + i - 2 >= 0 && outputDisplay.textInfo.characterInfo[startCount + i - 2].character == '.') ? typingSpeed * 3f : punctuationDelay;
+                    bool isEndOfSentence = true;
+                    if (startVisibleCount + i < endVisibleCount)
+                    {
+                        char nextChar = outputDisplay.textInfo.characterInfo[startVisibleCount + i].character;
+                        if (!char.IsWhiteSpace(nextChar)) isEndOfSentence = false;
+                    }
+
+                    if (isEndOfSentence)
+                    {
+                        bool isEllipsis = (c == '.' && startVisibleCount + i - 2 >= 0 && outputDisplay.textInfo.characterInfo[startVisibleCount + i - 2].character == '.');
+                        totalDelay += isEllipsis ? typingSpeed * 3f : punctuationDelay;
+                    }
+                }
+                else if (c == ',' || c == ':' || c == ';')
+                {
+                    totalDelay += commaDelay;
                 }
                 else if (c == ',' || c == ':' || c == ';') totalDelay += commaDelay;
 
