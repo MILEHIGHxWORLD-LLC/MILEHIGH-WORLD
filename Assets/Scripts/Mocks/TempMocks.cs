@@ -77,6 +77,8 @@ namespace UnityEngine
     }
     public class CreateAssetMenuAttribute : Attribute
     {
+        public string fileName = "";
+        public string menuName = "";
         public string fileName { get; set; } = "";
         public string menuName { get; set; } = "";
     }
@@ -240,6 +242,14 @@ namespace TMPro
     {
         public static int ID_OutlineWidth;
         public static int ID_OutlineColor;
+    }
+}
+
+namespace UnityEngine.Events
+{
+    public class UnityEvent<T>
+    {
+        public void AddListener(Action<T> action) {}
     }
 }
 

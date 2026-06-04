@@ -58,8 +58,7 @@ namespace Milehigh.World.Terminal
 
             if (outputDisplay != null)
             {
-                outputDisplay.text = "";
-                WriteToTerminal("<color=#00FF00>[SYSTEM]</color>: OTIS Terminal Online. Type 'help' for commands.");
+                ClearTerminal();
             }
         }
 
@@ -75,10 +74,14 @@ namespace Milehigh.World.Terminal
         {
             if (commandInput == null || !commandInput.isFocused) return;
 
-            // 🎨 Palette: Command History Navigation (Up/Down Arrows)
+            // 🎨 Palette: History Navigation
             if (Input.GetKeyDown(KeyCode.UpArrow))
             {
                 NavigateHistory(1);
+            }
+            else if (Input.GetKeyDown(KeyCode.DownArrow))
+            {
+                NavigateHistory(-1);
             }
             else if (Input.GetKeyDown(KeyCode.DownArrow))
             {
@@ -132,6 +135,20 @@ namespace Milehigh.World.Terminal
         private void NavigateHistory(int direction)
         {
             if (_commandHistory.Count == 0) return;
+
+            // direction 1 is Up (older), -1 is Down (newer)
+            int newIndex = _historyIndex + direction;
+
+            if (newIndex >= 0 && newIndex < _commandHistory.Count)
+            {
+                _historyIndex = newIndex;
+                commandInput.text = _commandHistory[_commandHistory.Count - 1 - _historyIndex];
+                commandInput.MoveTextEnd(false);
+            }
+            else if (newIndex == -1)
+            {
+                _historyIndex = -1;
+                commandInput.text = "";
             _historyIndex = Mathf.Clamp(_historyIndex + direction, -1, _commandHistory.Count - 1);
             commandInput.text = (_historyIndex == -1) ? "" : _commandHistory[_commandHistory.Count - 1 - _historyIndex];
             commandInput.MoveTextEnd(false);
@@ -147,6 +164,14 @@ namespace Milehigh.World.Terminal
             }
         }
 
+        private void ClearTerminal()
+        {
+            if (outputDisplay == null) return;
+            outputDisplay.text = "";
+            outputDisplay.maxVisibleCharacters = 0;
+            WriteToTerminal("<color=#00FF00>[SYSTEM]</color>: OTIS Terminal Online. Type 'help' for commands.");
+        }
+
         public void ProcessCommand(string input)
         {
             _historyIndex = -1;
@@ -160,6 +185,7 @@ namespace Milehigh.World.Terminal
 
             // 🛡️ Sentinel: Input validation and DoS protection BEFORE echoing to prevent UI injection.
             string sanitizedInput = input.Replace("<", "&lt;").Replace(">", "&gt;");
+
             // 🛡️ Sentinel: Input validation and DoS protection
             if (input.Length > MaxInputLength)
             {
@@ -180,6 +206,8 @@ namespace Milehigh.World.Terminal
 
             // 🎨 Palette: Echo validated user command to terminal.
             WriteToTerminal($"\n<color=#888888>> {sanitizedInput}</color>");
+
+            // Update command history
             if (_commandHistory.Count == 0 || _commandHistory[_commandHistory.Count - 1] != input)
             // 🛡️ Sentinel: Echo sanitized input
             WriteToTerminal($"\n<color=#888888>> {sanitizedInput}</color>");
@@ -196,6 +224,8 @@ namespace Milehigh.World.Terminal
             if (command == "clear")
             {
                 ClearTerminal();
+                CleanupInputAfterCommand();
+                return;
             }
             else if (command == "history")
             {
@@ -203,6 +233,8 @@ namespace Milehigh.World.Terminal
                 for (int i = 0; i < _commandHistory.Count; i++)
                     historyOutput += $"\n {i + 1}: <color=#00FFFF>{_commandHistory[i]}</color>";
                 WriteToTerminal(historyOutput);
+                CleanupInputAfterCommand();
+                return;
             }
             else if (command == "help")
             {
@@ -212,6 +244,8 @@ namespace Milehigh.World.Terminal
                                 "\n - <color=#00FFFF>history</color>: Show command history." +
                                 "\n - <color=#00FFFF>infiniteration</color>: Execute engine algorithm." +
                                 "\n\n<color=#888888>Shortcuts: [Tab] Completion, [Up/Down] History, [Esc] Clear Line, [Ctrl+L] Clear Screen</color>");
+                CleanupInputAfterCommand();
+                return;
             }
             else if (command == "infiniteration")
             {
@@ -268,6 +302,8 @@ namespace Milehigh.World.Terminal
             int[,] d = new int[n + 1, m + 1];
             if (n == 0) return m; if (m == 0) return n;
             for (int i = 0; i <= n; d[i, 0] = i++) ;
+            for (int j = 0; j <= m; j++) d[0, j] = j;
+
             for (int j = 0; j <= m; d[0, j] = j++) ;
             for (int i = 1; i <= n; i++)
                 for (int j = 1; j <= m; j++)
