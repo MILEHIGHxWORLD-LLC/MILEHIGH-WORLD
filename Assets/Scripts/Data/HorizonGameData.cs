@@ -102,6 +102,28 @@ namespace Milehigh.Data
                 Debug.LogError("[Security] Interaction: Action too long.");
                 return false;
             }
+
+            // 🛡️ Sentinel: Range validation to prevent physics-based DoS or out-of-bounds exploits.
+            if (float.IsInfinity(floatValue) || float.IsNaN(floatValue) || Mathf.Abs(floatValue) > 10000f)
+            {
+                Debug.LogError("[Security] Interaction: floatValue out of range.");
+                return false;
+            }
+            if (float.IsInfinity(x) || float.IsNaN(x) || Mathf.Abs(x) > 10000f ||
+                float.IsInfinity(y) || float.IsNaN(y) || Mathf.Abs(y) > 10000f ||
+                float.IsInfinity(z) || float.IsNaN(z) || Mathf.Abs(z) > 10000f)
+            {
+                Debug.LogError("[Security] Interaction: Vector coordinates out of range.");
+            // 🛡️ Sentinel: Validate numeric fields to prevent physics-based Denial of Service (DoS) attacks.
+            if (float.IsNaN(floatValue) || float.IsInfinity(floatValue) ||
+                float.IsNaN(x) || float.IsInfinity(x) ||
+                float.IsNaN(y) || float.IsInfinity(y) ||
+                float.IsNaN(z) || float.IsInfinity(z))
+            {
+                Debug.LogError($"[Security] Interaction: Numeric value out of range (NaN or Infinity) for {objectId}.");
+                return false;
+            }
+
             return true;
         }
     }
