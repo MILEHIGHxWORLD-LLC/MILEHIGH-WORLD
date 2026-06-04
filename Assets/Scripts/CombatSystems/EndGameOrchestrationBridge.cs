@@ -11,6 +11,12 @@ namespace MilehighWorld.CombatSystems
     public class EndGameOrchestrationBridge : MonoBehaviour
     {
         [Header("Entity Allocations")]
+        [SerializeField] private GameObject anastasiaAnchor = null!;
+        [SerializeField] private GameObject delilahTargetMesh = null!;
+
+        private static MaterialPropertyBlock? _propBlock;
+
+        // ⚡ Bolt: Cache shader property IDs to avoid expensive string-to-int lookups in hot loops.
         [SerializeField] private GameObject? anastasiaAnchor;
         [SerializeField] private GameObject? delilahTargetMesh;
 
@@ -45,15 +51,18 @@ namespace MilehighWorld.CombatSystems
                 Rigidbody? aeronRB = null;
                 if (aeron != null && aeron.PrefabReference != null)
                 {
-                    aeronRB = aeron.PrefabReference.GetComponent<Rigidbody>();
-                    // ⚡ Bolt: Set mass once outside the loop as it remains constant during this phase.
-                    if (aeronRB != null) aeronRB.mass = 900.0f;
+                    if (aeron.PrefabReference.TryGetComponent<Rigidbody>(out var aeronRB))
+                    {
+                        // ⚡ Bolt: Set mass once outside the loop as it remains constant during this phase.
+                        aeronRB.mass = 900.0f;
+                    }
                 }
 
                 Renderer? delilahRenderer = null;
                 if (delilahTargetMesh != null)
                 {
                     delilahTargetMesh.TryGetComponent<Renderer>(out delilahRenderer);
+                    // ⚡ Bolt: Hoist GetPropertyBlock out of the loop.
                     // ⚡ Bolt: Hoist MaterialPropertyBlock fetching outside the loop.
                     if (delilahRenderer != null) delilahRenderer.GetPropertyBlock(_propBlock);
                 }
@@ -67,6 +76,8 @@ namespace MilehighWorld.CombatSystems
                 // 3. Multithreaded Evaluation Loop for Dual-Layer Defense Matrix
                 float voidVarianceDelta = 0.98f;
                 float parityResonance = 0.15f;
+                // ⚡ Bolt: Pre-calculate loop-invariant or frequent values.
+                float deltaStep = ingrisVanguard.PrefabReference != null ? 0.09f : 0.009f;
 
                 // ⚡ Bolt: Pre-calculate loop-invariant values.
                 float deltaStep = (ingrisVanguard.PrefabReference != null) ? 0.09f : 0.009f;

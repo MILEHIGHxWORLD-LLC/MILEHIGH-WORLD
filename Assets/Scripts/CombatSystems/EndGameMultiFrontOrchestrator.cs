@@ -26,23 +26,34 @@ namespace MilehighWorld.CombatSystems
         {
             Debug.Log("<color=#E0BBE4>[SYSTEM]: multi_front_battle_loop initiated. Synchronizing thread data...</color>");
 
-            // 1. Unpack entity targets from registry
+            // 1. Unpack entity targets from registry and hoist lookups outside the hot loop.
             var micahBulwark = director.GetAlly("Micah");
             var skyIxVanguard = director.GetAlly("Sky.ix");
             var kingCyrusBoss = director.GetEnemy("KingCyrus");
 
             // ⚡ Bolt: Hoist character references and component lookups outside the hot loop.
             var reverie = director.GetAlly("Reverie");
-            var micahRB = micahBulwark?.PrefabReference?.GetComponent<Rigidbody>();
+            var kingCyrusBoss = director.GetEnemy("KingCyrus");
 
             // ⚡ Bolt: Setting constant values once outside the loop to eliminate redundant native writes.
-            if (micahRB != null) micahRB.mass = 900.0f;
+            if (micahBulwark != null && micahBulwark.PrefabReference != null)
+            {
+                if (micahBulwark.PrefabReference.TryGetComponent<Rigidbody>(out var micahRB))
+                {
+                    micahRB.mass = 900.0f;
+                }
+            }
 
             float voidVarianceDelta = 0.99f;
             float combinedTraumaModifier = 0.85f; // Clamped index based on Micah + Cirrus profiles
 
             if (_propBlock == null) _propBlock = new MaterialPropertyBlock();
 
+            // ⚡ Bolt: Pre-cache components and current state outside the loop.
+            if (platformRenderer != null)
+            {
+                // Hoist GetPropertyBlock out of the loop to save redundant native-to-managed copies every frame.
+                platformRenderer.GetPropertyBlock(_propBlock);
             // ⚡ Bolt: Pre-cache MaterialPropertyBlock once before the loop.
             if (platformRenderer != null) platformRenderer.GetPropertyBlock(_propBlock);
             // ⚡ Bolt: Pre-cache ally references and components outside the hot loop to reduce CPU overhead.
@@ -70,6 +81,7 @@ namespace MilehighWorld.CombatSystems
                     return;
                 }
 
+                // ⚡ Bolt: Removed redundant UseAbility calls. Using pre-cached references to avoid O(N) lookups.
                 // ⚡ Bolt: Using pre-cached references to avoid O(N) lookups and deduplicating redundant calls.
                 if (reverieAlly != null) reverieAlly.UseAbility("Arcane Symphony");
                 // ⚡ Bolt: Using cached ally references and components to eliminate per-frame dictionary lookups and native bridge calls.
