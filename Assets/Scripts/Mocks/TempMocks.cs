@@ -79,6 +79,8 @@ namespace UnityEngine
     {
         public string fileName = "";
         public string menuName = "";
+        public string fileName { get; set; } = "";
+        public string menuName { get; set; } = "";
     }
     public class TextAreaAttribute : Attribute
     {
@@ -174,6 +176,15 @@ namespace UnityEngine
     public static class Random
     {
         public static float Range(float min, float max) => 0;
+    }
+}
+
+namespace UnityEngine.Events
+{
+    public class UnityEvent<T>
+    {
+        public void AddListener(Action<T> action) {}
+        public void RemoveListener(Action<T> action) {}
     }
 }
 
