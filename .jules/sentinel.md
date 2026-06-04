@@ -123,3 +123,7 @@
 **Vulnerability:** Incomplete IDOR blocklist in SceneDirector.cs and a syntax error (dangling '||' operator) caused by redundant, rotted code blocks that potentially bypassed security checks. Critical system managers like TimelineSimulationEngine were omitted from the protection list.
 **Learning:** Code rot, especially when it results in multiple overlapping validation blocks, often leads to syntax errors that are overlooked during quick audits. These errors can silently disable security controls.
 **Prevention:** Consolidate validation logic into a single, well-defined pipeline. Regularly audit blocklists against the actual list of architectural singletons in the project.
+## 2025-05-20 - [IDOR Protection Hardening and Code Rot Consolidation]
+**Vulnerability:** `SceneDirector.cs` had a fragmented IDOR blocklist and redundant null checks (code rot), which masked a missing protection for `TimelineSimulationEngine`.
+**Learning:** Overlapping and redundant security checks often lead to logic errors and maintenance gaps. Consolidating security validation into a single, linear pipeline ensures all checks are executed and simplifies auditing.
+**Prevention:** Always prioritize a "Validate-then-Execute" pipeline and maintain a comprehensive, single-source-of-truth blocklist for sensitive architectural components.
