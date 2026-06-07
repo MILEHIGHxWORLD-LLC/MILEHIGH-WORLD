@@ -20,7 +20,6 @@ namespace Milehigh.Core
             "CombatManager", "GlobalResonanceManager", "BicameralBattleEngine",
             "SkyIxController", "CinematicController", "TimelineSimulationEngine",
             "AsyncSceneLoader", "OtisTerminal"
-            "OtisTerminal", "AsyncSceneLoader"
         };
 
         private Dictionary<string, GameObject?> _objectCache = new Dictionary<string, GameObject?>();
