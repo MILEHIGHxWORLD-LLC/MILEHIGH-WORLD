@@ -17,6 +17,7 @@ namespace MilehighWorld.CombatSystems
         private static MaterialPropertyBlock? _propBlock;
 
         // ⚡ Bolt: Cache shader property IDs to eliminate per-frame string-to-int lookups.
+        // ⚡ Bolt: Cache shader property IDs to eliminate per-frame string-to-int lookups in high-frequency loops.
         private static readonly int VoidPulseRateId = Shader.PropertyToID("_VoidPulseRate");
         private static readonly int EmissiveIntensityId = Shader.PropertyToID("_EmissiveIntensity");
 
@@ -36,6 +37,37 @@ namespace MilehighWorld.CombatSystems
                 var reverie = director.GetAlly("Reverie");
 
                 if (micahBulwark != null && micahBulwark.PrefabReference != null)
+            // ⚡ Bolt: Hoist character references and component lookups outside the hot loop.
+            var micahBulwark = director.GetAlly("Micah");
+            var skyIxVanguard = director.GetAlly("Sky.ix");
+            var reverie = director.GetAlly("Reverie");
+            var kingCyrusBoss = director.GetEnemy("KingCyrus");
+
+            // ⚡ Bolt: Cache components and set constant values once outside the loop to eliminate redundant native writes.
+            if (micahBulwark?.PrefabReference != null)
+            {
+                if (micahBulwark.PrefabReference.TryGetComponent<Rigidbody>(out var micahRB))
+                {
+                    micahRB.mass = 900.0f;
+                }
+            }
+
+            float voidVarianceDelta = 0.99f;
+            float combinedTraumaModifier = 0.85f; // Clamped index based on Micah + Cirrus profiles
+
+            if (_propBlock == null) _propBlock = new MaterialPropertyBlock();
+
+            // ⚡ Bolt: Pre-cache MaterialPropertyBlock once before the loop to save redundant native-to-managed copies every frame.
+            if (platformRenderer != null)
+            {
+                platformRenderer.GetPropertyBlock(_propBlock);
+            }
+
+            // Main multi-threaded evaluation loop for the convergence
+            while (voidVarianceDelta > 0.0f)
+            {
+                // Verify background tracking integrity to ensure client stability
+                if (kingCyrusBoss == null || micahBulwark == null)
                 {
                     if (micahBulwark.PrefabReference.TryGetComponent<Rigidbody>(out var micahRB))
                     {
@@ -79,6 +111,20 @@ namespace MilehighWorld.CombatSystems
                     }
 
                     await Task.Yield();
+                // ⚡ Bolt: Using pre-cached references to avoid O(N) lookups and native bridge overhead.
+                reverie?.UseAbility("Arcane Symphony");
+                skyIxVanguard?.UseAbility("Void Step");
+
+                // Decrement global variance based on local structural shard completion
+                voidVarianceDelta -= 0.11f;
+
+                // Real-time update to HDRP custom material instances via property IDs
+                // ⚡ Bolt: Using cached Renderer, Property IDs, and MaterialPropertyBlock for efficient shader updates.
+                if (platformRenderer != null && _propBlock != null)
+                {
+                    _propBlock.SetFloat(VoidPulseRateId, voidVarianceDelta);
+                    _propBlock.SetFloat(EmissiveIntensityId, voidVarianceDelta * 4.5f);
+                    platformRenderer.SetPropertyBlock(_propBlock);
                 }
 
                 // 3. Force 180-Degree Physical Inversion on the core Onalym database node
