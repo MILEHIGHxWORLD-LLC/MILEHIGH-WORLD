@@ -55,12 +55,13 @@ namespace UnityEngine
     public struct Quaternion
     {
         public float x, y, z, w;
+        public static Quaternion identity => new Quaternion();
     }
     public class Debug
     {
         public static void Log(object message) {}
         public static void LogWarning(object message) {}
-        public static void LogError(object message) {}
+        public static void LogError(object message) { Console.WriteLine(message); }
     }
     public class JsonUtility
     {
@@ -106,6 +107,7 @@ namespace UnityEngine
         public static float Abs(float f) => f < 0 ? -f : f;
         public const float PI = 3.14159265f;
         public static float Sin(float f) => 0;
+        public static Vector3 insideUnitSphere => new Vector3();
     }
     public class Color
     {
@@ -220,7 +222,7 @@ namespace TMPro
     {
         public string text { get; set; } = "";
         public int characterLimit { get; set; }
-        public bool isFocused { get; }
+        public bool isFocused { get; } = false;
         public void ActivateInputField() {}
         public void MoveTextEnd(bool shift) {}
         public UnityEngine.Transform transform { get; } = new UnityEngine.Transform();

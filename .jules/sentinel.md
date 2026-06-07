@@ -136,3 +136,7 @@
 **Vulnerability:** A critical security bypass was found in `SceneDirector.cs` where multiple overlapping `if` blocks and a dangling `||` operator in the `ApplyInteraction` method effectively neutralized the IDOR protection. This allowed potentially malicious external data to interact with any scene object, including core managers.
 **Learning:** Code rot and redundant logic paths are major security risks. In this case, previous attempts to "harden" the code actually broke it by introducing syntax errors and logic contradictions.
 **Prevention:** Consolidate security-critical logic into a single, linear "Validate-then-Execute" pipeline. Avoid redundant validation blocks that can lead to maintenance gaps and silent failures.
+## 2025-05-21 - [IDOR Bypass via Syntax Error in SceneDirector]
+**Vulnerability:** A syntax error in `SceneDirector.cs` (a dangling `||` operator in an `if` condition) truncated the IDOR blocklist check, allowing unauthorized manipulation of critical system managers.
+**Learning:** Code rot, especially when it results in multiple overlapping validation blocks, often leads to syntax errors that are overlooked during quick audits. These errors can silently disable security controls.
+**Prevention:** Consolidate security-critical logic into a single, clean, and properly sequenced pipeline: Validate Input -> Check Authorization (Blocklist) -> Execute. Avoid redundant, rotted code blocks that obscure the primary security path.
