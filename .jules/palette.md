@@ -31,3 +31,7 @@
 ## 2025-06-25 - [Contextual UX Education]
 **Learning:** Users are most likely to seek help for a feature (like history) when they try to use it and fail. Providing contextual tips (e.g., in empty states) is more effective than static documentation for teaching power-user shortcuts.
 **Action:** Always include helpful, contextual hints in "empty states" to guide users toward relevant shortcuts or features.
+
+## 2025-06-28 - [Retro Terminal Immersion]
+**Learning:** Retro terminal immersion is significantly enhanced by providing simulated system metadata (like version strings and "Last Login" timestamps) during the startup sequence. This makes the interface feel like a functional part of the game's universe rather than just a UI layer.
+**Action:** Include simulated session info and system versions in CLI-style startup sequences to deepen environmental storytelling and player immersion.
