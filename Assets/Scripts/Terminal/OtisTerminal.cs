@@ -197,7 +197,9 @@ namespace Milehigh.World.Terminal
             {
                 for (int i = 0; i < _commandHistory.Count; i++)
                 {
-                    sb.Append("\n ").Append(i + 1).Append(": <color=#00FFFF>").Append(_commandHistory[i]).Append("</color>");
+                    // 🛡️ Sentinel: Sanitize history entries by escaping Rich Text tags to prevent UI injection/DoS.
+                    string sanitizedEntry = _commandHistory[i].Replace("<", "&lt;").Replace(">", "&gt;");
+                    sb.Append("\n ").Append(i + 1).Append(": <color=#00FFFF>").Append(sanitizedEntry).Append("</color>");
                 }
             }
             WriteToTerminal(sb.ToString());
