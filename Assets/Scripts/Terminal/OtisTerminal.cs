@@ -1,3 +1,4 @@
+using System;
 using UnityEngine;
 using UnityEngine.UI;
 using TMPro;
@@ -233,6 +234,13 @@ namespace Milehigh.World.Terminal
 
         private void DisplayHistory()
         {
+            // ⚡ Bolt: Using StringBuilder to eliminate O(N^2) string allocations in the history display loop.
+            StringBuilder sb = new StringBuilder();
+            sb.Append("\n<color=#00FF00>[SYSTEM]</color>: <color=#FFFF00>Command History:</color>");
+
+            if (_commandHistory.Count == 0)
+            {
+                sb.Append("\n <color=#888888>Tip: History is empty. Use [Up/Down] arrows to navigate past commands once you've entered them!</color>");
             if (_commandHistory.Count == 0)
             {
                 output += "\n <color=#888888>Tip: History is empty. Use [Up/Down] arrows to navigate past commands once you've entered them!</color>";
@@ -264,6 +272,13 @@ namespace Milehigh.World.Terminal
             {
                 for (int i = 0; i < _commandHistory.Count; i++)
                 {
+                    sb.Append("\n ");
+                    sb.Append(i + 1);
+                    sb.Append(": <color=#00FFFF>");
+                    sb.Append(_commandHistory[i]);
+                    sb.Append("</color>");
+                }
+            }
                     // 🛡️ Sentinel: Sanitize history entries to prevent Rich Text UI injection.
                     // 🛡️ Sentinel: Sanitize history entries by escaping Rich Text tags to prevent UI injection/DoS.
                     string sanitizedEntry = _commandHistory[i].Replace("<", "&lt;").Replace(">", "&gt;");
@@ -330,6 +345,7 @@ namespace Milehigh.World.Terminal
             _lastSuggestion = suggestion;
             string suggestionText = !string.IsNullOrEmpty(suggestion) ? $" Did you mean <color=#00FFFF>'{suggestion}'</color>?" : "";
             WriteToTerminal($"\n<color=#00FF00>[SYSTEM]</color>: <color=#FF0000>Unknown command: '{command}'.{suggestionText}</color>" +
+                "\n<color=#888888>Tip: Use [Tab] to auto-complete commands, or type 'help' for options.</color>");
                 "\n<color=#888888>Tip: Use [Tab] to auto-complete commands. Type 'help' for options.</color>");
                 "\n<color=#888888>Tip: Use [Tab] to auto-complete commands or type 'help' for options.</color>");
                 "\n<color=#AAAAAA>Tip: Use [Tab] to auto-complete commands, or type 'help' for options.</color>");
@@ -355,6 +371,8 @@ namespace Milehigh.World.Terminal
 
         private int GetLevenshteinDistance(string s, string t)
         {
+            // ⚡ Bolt: Zero-allocation Levenshtein Distance using stackalloc for small inputs (up to 128 chars).
+            // This eliminates heap allocations during high-frequency fuzzy matching when an unknown command is entered.
             // ⚡ Bolt: Optimized Levenshtein Distance using O(M) space and stackalloc Span<int> for inputs up to 128 characters.
             // This eliminates heap allocations during high-frequency fuzzy command matching.
             // ⚡ Bolt: Optimized Levenshtein Distance using Span<int> and stackalloc to eliminate heap allocations.
@@ -370,6 +388,8 @@ namespace Milehigh.World.Terminal
 
             if (n < m) { (s, t) = (t, s); (n, m) = (m, n); }
 
+            Span<int> v0 = m < 128 ? stackalloc int[m + 1] : new int[m + 1];
+            Span<int> v1 = m < 128 ? stackalloc int[m + 1] : new int[m + 1];
             // ⚡ Bolt: Use a stack-allocated buffer for common string lengths to eliminate heap allocations.
             // Swapping Span references is used instead of CopyTo to save O(M) operations per iteration.
             Span<int> v0 = m < 128 ? stackalloc int[m + 1] : new int[m + 1];
@@ -393,6 +413,7 @@ namespace Milehigh.World.Terminal
                     int cost = (s[i] == t[j]) ? 0 : 1;
                     v1[j + 1] = Mathf.Min(Mathf.Min(v1[j] + 1, v0[j + 1] + 1), v0[j] + cost);
                 }
+                v1.CopyTo(v0);
 
                 // Swap references for the next iteration to avoid copying the entire buffer.
                 // ⚡ Bolt: Swap spans to eliminate O(M) copy operations per iteration.

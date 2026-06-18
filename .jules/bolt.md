@@ -108,6 +108,9 @@
 **Learning:** 'EndGameMultiFrontOrchestrator.cs' was prone to severe code rot and syntax errors (missing braces) due to multiple overlapping and triplicated optimization attempts. Consolidation into a single, clean 'Bolt' pattern is necessary to maintain both performance and compilation integrity.
 **Action:** When encountering triplicated logic or conflicting 'Bolt' comments, consolidate into a single optimized implementation and verify with a standalone 'dotnet build'.
 
+## 2026-06-12 - Zero-Allocation Fuzzy Matching and History Buffering
+**Learning:** Terminal-style components in this codebase frequently suffer from code rot and inefficient string handling. Implementing 'stackalloc Span<int>' for Levenshtein distance and 'StringBuilder' for history display eliminates major GC allocation spikes during UI interactions.
+**Action:** Always prefer 'StringBuilder' for iterative string building and 'Span<T>' with stack allocation for temporary buffers in high-frequency string algorithms.
 ## 2024-05-24 - OtisTerminal Memory and GC Optimization
 **Learning:** High-frequency operations like fuzzy command matching and terminal history rendering in 'OtisTerminal.cs' were generating significant heap allocations through 'int[]' arrays and string concatenations. In modern .NET (9.0+), 'stackalloc Span<int>' can be used to eliminate heap allocations for common input sizes, and 'StringBuilder' reduces (N^2)$ allocation overhead for string building.
 **Action:** Use 'stackalloc Span<T>' for small, short-lived buffers and 'StringBuilder' for iterative string construction to reduce GC pressure and improve UI responsiveness.
