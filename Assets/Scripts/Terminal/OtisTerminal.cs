@@ -21,7 +21,7 @@ namespace Milehigh.World.Terminal
         [SerializeField] private float commaDelay = 0.08f;
 
         private const int MaxInputLength = 256;
-        private static readonly Regex SafeCommandRegex = new Regex(@"^[a-zA-Z0-9\s._\-]+$", RegexOptions.Compiled);
+        private static readonly Regex SafeCommandRegex = new Regex(@"^[a-zA-Z0-9 \t._\-]+$", RegexOptions.Compiled);
         private static readonly string[] _availableCommands = { "help", "clear", "history", "infiniteration" };
 
         private Coroutine? _typewriterCoroutine;
@@ -178,6 +178,8 @@ namespace Milehigh.World.Terminal
 
             // 🎨 Palette: Echo sanitized input
             WriteToTerminal($"\n<color=#AAAAAA>> {sanitizedInput}</color>");
+            // 🎨 Palette: Echo sanitized input after validation passes
+            WriteToTerminal($"\n<color=#888888>> {sanitizedInput}</color>");
 
             // Update command history
             if (_commandHistory.Count == 0 || _commandHistory.Last() != input)
@@ -244,6 +246,11 @@ namespace Milehigh.World.Terminal
 
             WriteToTerminal($"\n<color=#00FF00>[SYSTEM]</color>: <color=#FF0000>Unknown command: '{command}'.{suggestionText}</color>" +
                 $"\n<color=#AAAAAA>Tip: {tip}</color>");
+            string suggestion = GetFuzzyMatch(command);
+            _lastSuggestion = suggestion;
+            string suggestionText = !string.IsNullOrEmpty(suggestion) ? $" Did you mean <color=#00FFFF>'{suggestion}'</color>?" : "";
+            WriteToTerminal($"\n<color=#00FF00>[SYSTEM]</color>: <color=#FF0000>Unknown command: '{command}'.{suggestionText}</color>" +
+                "\n<color=#AAAAAA>Tip: Use [Tab] to auto-complete commands, or type 'help' for options.</color>");
             StartCoroutine(ShakeInputField());
         }
 
