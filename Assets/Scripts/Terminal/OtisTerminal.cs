@@ -136,7 +136,6 @@ namespace Milehigh.World.Terminal
         {
             if (_commandHistory.Count == 0) return;
 
-            // Save current input if we are starting to navigate from the prompt
             if (_historyIndex == -1 && direction == 1)
             {
                 _persistentInput = commandInput.text;
@@ -189,10 +188,8 @@ namespace Milehigh.World.Terminal
                 return;
             }
 
-            // 🛡️ Sentinel: Sanitize input to escape rich text tags BEFORE any validation or echoing.
             string sanitizedInput = input.Replace("<", "&lt;").Replace(">", "&gt;");
 
-            // 🛡️ Sentinel: Input validation and DoS protection
             if (input.Length > MaxInputLength)
             {
                 WriteToTerminal("\n<color=#FF0000>[SECURITY]</color>: Input exceeds maximum length.");
@@ -213,14 +210,12 @@ namespace Milehigh.World.Terminal
             // 🎨 Palette: Echo sanitized input after validation passes
             WriteToTerminal($"\n<color=#888888>> {sanitizedInput}</color>");
 
-            // Update command history
             if (_commandHistory.Count == 0 || _commandHistory.Last() != input)
             {
                 _commandHistory.Add(input);
             }
-            _persistentInput = "";
 
-            string[] parts = input.Trim().Split(' ', System.StringSplitOptions.RemoveEmptyEntries);
+            string[] parts = input.Trim().Split(' ', StringSplitOptions.RemoveEmptyEntries);
             string command = parts[0].ToLower();
 
             if (command == "clear") ClearTerminal();
@@ -234,6 +229,13 @@ namespace Milehigh.World.Terminal
 
         private void DisplayHistory()
         {
+            // ⚡ Bolt: Using StringBuilder to eliminate multiple string allocations during history listing.
+            var sb = new StringBuilder();
+            sb.Append("\n<color=#00FF00>[SYSTEM]</color>: <color=#FFFF00>Command History:</color>");
+
+            if (_commandHistory.Count == 0)
+            {
+                sb.Append("\n <color=#888888>Tip: History is empty. Use [Up/Down] arrows to navigate past commands once you've entered them!</color>");
             // ⚡ Bolt: Using StringBuilder to eliminate O(N^2) string allocations in the history display loop.
             StringBuilder sb = new StringBuilder();
             sb.Append("\n<color=#00FF00>[SYSTEM]</color>: <color=#FFFF00>Command History:</color>");
@@ -272,6 +274,9 @@ namespace Milehigh.World.Terminal
             {
                 for (int i = 0; i < _commandHistory.Count; i++)
                 {
+                    sb.Append($"\n {i + 1}: <color=#00FFFF>{_commandHistory[i]}</color>");
+                }
+            }
                     sb.Append("\n ");
                     sb.Append(i + 1);
                     sb.Append(": <color=#00FFFF>");
@@ -371,6 +376,8 @@ namespace Milehigh.World.Terminal
 
         private int GetLevenshteinDistance(string s, string t)
         {
+            // ⚡ Bolt: High-performance Levenshtein distance using stack memory to eliminate GC pressure.
+            // Using O(M) space complexity and Span<int> for safe stack-allocated memory access.
             // ⚡ Bolt: Zero-allocation Levenshtein Distance using stackalloc for small inputs (up to 128 chars).
             // This eliminates heap allocations during high-frequency fuzzy matching when an unknown command is entered.
             // ⚡ Bolt: Optimized Levenshtein Distance using O(M) space and stackalloc Span<int> for inputs up to 128 characters.
@@ -383,6 +390,11 @@ namespace Milehigh.World.Terminal
             int n = s.Length, m = t.Length;
             int n = s.Length;
             int m = t.Length;
+
+            if (n < m) { (s, t) = (t, s); (n, m) = (m, n); }
+
+            // Use stack allocation for small strings (common in terminal commands) to avoid heap allocations.
+            // Max command length is 256, so 257 ints = 1028 bytes, well within safe stack limits.
             if (n == 0) return m;
             if (m == 0) return n;
 
@@ -511,7 +523,6 @@ namespace Milehigh.World.Terminal
                     totalDelay += commaDelay;
                 }
 
-                // ⚡ Bolt: Single zero-allocation yield per character reveal via shared cache.
                 yield return GetWait(totalDelay);
             }
 

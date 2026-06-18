@@ -1,3 +1,6 @@
+## 2025-05-14 - GC optimization in Unity C#
+**Learning:** In Unity, `new WaitForSeconds(n)` in a coroutine loop and string concatenation in a UI loop are common sources of frame-time spikes due to GC pressure. Additionally, heap-allocating arrays for algorithms like Levenshtein distance during user input can be eliminated using `stackalloc` and `Span<T>`.
+**Action:** Always check for `new WaitForSeconds` in coroutines and string concatenation in high-frequency UI updates. Use `StringBuilder` for string building and `stackalloc Span<T>` for temporary buffer needs in performance-critical paths.
 ## 2024-05-24 - Unity GameObject.Find Performance Bottleneck
 **Learning:** In Unity 3D scripts like `SceneDirector.cs` within this project, methods frequently call `GameObject.Find()` to search for characters or interactive objects by name during scene setups. This forces Unity to traverse the entire scene hierarchy repeatedly (O(N) operation), which can cause noticeable load times or frame drops if called continuously or on large scenes.
 **Action:** Replace direct `GameObject.Find()` calls with a `Dictionary<string, GameObject>` cache when objects are fetched by name multiple times or instantiated dynamically. Check `cachedObj != null` to handle Unity's custom object destruction logic safely before returning a cached reference.
