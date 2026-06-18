@@ -7,6 +7,8 @@ using System.Text;
 using System.Text.RegularExpressions;
 using System.Collections;
 using System.Linq;
+using System.Text;
+using System;
 
 namespace Milehigh.World.Terminal
 {
@@ -208,6 +210,25 @@ namespace Milehigh.World.Terminal
 
         private void DisplayHistory()
         {
+            if (_commandHistory.Count == 0)
+            {
+                WriteToTerminal("\n<color=#00FF00>[SYSTEM]</color>: <color=#FFFF00>Command History:</color>\n <color=#888888>Tip: History is empty. Use [Up/Down] arrows to navigate past commands once you've entered them!</color>");
+                return;
+            }
+
+            // ⚡ Bolt: Use StringBuilder to avoid O(N^2) string allocations during history rendering.
+            StringBuilder sb = new StringBuilder(128);
+            sb.Append("\n<color=#00FF00>[SYSTEM]</color>: <color=#FFFF00>Command History:</color>");
+
+            for (int i = 0; i < _commandHistory.Count; i++)
+            {
+                sb.Append("\n ");
+                sb.Append(i + 1);
+                sb.Append(": <color=#00FFFF>");
+                sb.Append(_commandHistory[i]);
+                sb.Append("</color>");
+            }
+
             // ⚡ Bolt: Using StringBuilder to minimize allocations in the history display loop.
             StringBuilder sb = new StringBuilder("\n<color=#00FF00>[SYSTEM]</color>: <color=#FFFF00>Command History:</color>");
             if (_commandHistory.Count == 0)
@@ -232,6 +253,11 @@ namespace Milehigh.World.Terminal
         private void DisplayHelp()
         {
             WriteToTerminal("\n<color=#00FF00>[SYSTEM]</color>: <color=#FFFF00>Available Commands:</color>" +
+                "\n - <color=#00FFFF>help</color>: Show this message." +
+                "\n - <color=#00FFFF>clear</color>: Clear the terminal display." +
+                "\n - <color=#00FFFF>history</color>: Show command history." +
+                "\n - <color=#00FFFF>infiniteration</color>: Execute engine algorithm." +
+                "\n\n<color=#888888>Shortcuts: [Tab] Completion, [Up/Down] History, [Esc] Clear Line, [Ctrl+L] Clear Screen</color>");
                             "\n - <color=#00FFFF><b>help</b></color>: Show this message." +
                             "\n - <color=#00FFFF><b>clear</b></color>: Clear terminal." +
                             "\n - <color=#00FFFF><b>history</b></color>: Show command history." +
@@ -293,6 +319,8 @@ namespace Milehigh.World.Terminal
 
         private int GetLevenshteinDistance(string s, string t)
         {
+            // ⚡ Bolt: Optimized Levenshtein Distance using O(M) space and stackalloc Span<int> for inputs up to 128 characters.
+            // This eliminates heap allocations during high-frequency fuzzy command matching.
             // ⚡ Bolt: Optimized Levenshtein Distance using Span<int> and stackalloc to eliminate heap allocations.
             // Uses O(M) space and swaps span references to avoid redundant copies.
             if (string.IsNullOrEmpty(s)) return t?.Length ?? 0;
@@ -303,6 +331,12 @@ namespace Milehigh.World.Terminal
             if (n == 0) return m;
             if (m == 0) return n;
 
+            if (n < m) { (s, t) = (t, s); (n, m) = (m, n); }
+
+            // ⚡ Bolt: Use a stack-allocated buffer for common string lengths to eliminate heap allocations.
+            // Swapping Span references is used instead of CopyTo to save O(M) operations per iteration.
+            Span<int> v0 = m < 128 ? stackalloc int[m + 1] : new int[m + 1];
+            Span<int> v1 = m < 128 ? stackalloc int[m + 1] : new int[m + 1];
             if (n < m)
             {
                 string tempS = s; s = t; t = tempS;
@@ -323,6 +357,7 @@ namespace Milehigh.World.Terminal
                     v1[j + 1] = Mathf.Min(Mathf.Min(v1[j] + 1, v0[j + 1] + 1), v0[j] + cost);
                 }
 
+                // Swap references for the next iteration to avoid copying the entire buffer.
                 // ⚡ Bolt: Swap spans to eliminate O(M) copy operations per iteration.
                 Span<int> temp = v0;
                 v0 = v1;

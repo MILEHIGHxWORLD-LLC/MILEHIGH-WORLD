@@ -108,6 +108,9 @@
 **Learning:** 'EndGameMultiFrontOrchestrator.cs' was prone to severe code rot and syntax errors (missing braces) due to multiple overlapping and triplicated optimization attempts. Consolidation into a single, clean 'Bolt' pattern is necessary to maintain both performance and compilation integrity.
 **Action:** When encountering triplicated logic or conflicting 'Bolt' comments, consolidate into a single optimized implementation and verify with a standalone 'dotnet build'.
 
+## 2024-05-24 - OtisTerminal Memory and GC Optimization
+**Learning:** High-frequency operations like fuzzy command matching and terminal history rendering in 'OtisTerminal.cs' were generating significant heap allocations through 'int[]' arrays and string concatenations. In modern .NET (9.0+), 'stackalloc Span<int>' can be used to eliminate heap allocations for common input sizes, and 'StringBuilder' reduces (N^2)$ allocation overhead for string building.
+**Action:** Use 'stackalloc Span<T>' for small, short-lived buffers and 'StringBuilder' for iterative string construction to reduce GC pressure and improve UI responsiveness.
 ## 2025-05-20 - stackalloc Span<int> and Tuple Swap Limitations
 **Learning:** Using `stackalloc Span<int>` in Unity C# (especially with modern .NET SDKs like .NET 9/10) is a powerful way to eliminate heap allocations in algorithms like Levenshtein distance. However, `Span<T>` is a ref struct and cannot be used as a type argument in tuples, meaning `(v0, v1) = (v1, v0)` will fail with CS9244.
 **Action:** Use a temporary variable (`Span<int> temp = v0; v0 = v1; v1 = temp;`) for swapping spans to remain compatible with ref struct constraints while maintaining O(1) swap performance.
