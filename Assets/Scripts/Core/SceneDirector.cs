@@ -21,6 +21,8 @@ namespace Milehigh.Core
             "CombatManager", "GlobalResonanceManager", "BicameralBattleEngine",
             "SkyIxController", "CinematicController", "TimelineSimulationEngine",
             "AsyncSceneLoader", "OtisTerminal", "RealityAnchor", "LatticeSynchronizer",
+            "EndGameMultiFrontOrchestrator", "EndGameOrchestrationBridge",
+            "EventSystem", "Main Camera"
             "EndGameMultiFrontOrchestrator", "EndGameOrchestrationBridge", "EventSystem",
             "Main Camera"
         };
@@ -179,6 +181,26 @@ namespace Milehigh.Core
             // 🛡️ Sentinel: Consolidate security validation into a single, linear pipeline.
             // Prevents NullReferenceException (information disclosure) and IDOR attacks.
             if (interaction == null || string.IsNullOrWhiteSpace(interaction.objectId)) return;
+
+            // 🛡️ Sentinel: Prevent Insecure Direct Object Reference (IDOR) by sanitizing untrusted external object IDs.
+            // Block critical system managers and architectural singletons from being manipulated via external data.
+            // Trim input to thwart bypasses using leading/trailing whitespace.
+            string cleanId = interaction.objectId.Trim();
+            if (ProtectedSystemObjects.Contains(cleanId))
+            {
+                Debug.LogError($"[Security] Blocked unauthorized interaction attempt to system object: {cleanId}");
+                return;
+            }
+
+            GameObject? target = GetCachedObject(cleanId);
+            if (target != null)
+            {
+                // 🛡️ Sentinel: Secondary security check. Verify the resolved object name against the blocklist
+                // as defense-in-depth against path-based or hierarchy-based bypasses (e.g. "/CampaignManager").
+                string targetName = target.name.Trim();
+                if (ProtectedSystemObjects.Contains(targetName))
+                {
+                    Debug.LogError($"[Security] Blocked resolved interaction to protected system object: {targetName}");
 
             string objectId = interaction.objectId.Trim();
 
