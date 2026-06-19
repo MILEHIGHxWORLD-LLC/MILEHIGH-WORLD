@@ -163,3 +163,8 @@
 **Vulnerability:** Insecure Direct Object Reference (IDOR) via `GameObject.Find` in `SceneDirector.cs`. Previous protections only checked the input string against a blocklist. An attacker could potentially use whitespace or other string variations to bypass the initial string check while still resolving to a protected object.
 **Learning:** Checking only the input string is insufficient if the underlying lookup system (`GameObject.Find`) might resolve different or rotted string variations to the same sensitive object.
 **Prevention:** Implement "Double Validation": Validate the untrusted input string against the blocklist, resolve the object, and then *re-validate* the resolved object's actual name against the blocklist before performing any operations.
+
+## 2025-06-25 - [Security Logic Fragility via Code Rot]
+**Vulnerability:** Critical security controls (IDOR blocklists in `SceneDirector.cs` and Rich Text sanitization in `OtisTerminal.cs`) were repeatedly bypassed or broken due to extreme code rot and duplicate logic paths. Redundant class members and overlapping method implementations caused silent failures where one path was secured but another was rotted and vulnerable.
+**Learning:** Code rot is a high-severity security risk in interactive systems. Security validation that only covers one of several possible execution paths is a "security theater" that masks real vulnerabilities.
+**Prevention:** Enforce a strict "Single Source of Truth" for all security-critical pipelines. Consolidate interactive input processing into linear, deduplicated pipelines (Validate -> Sanitize -> Execute) and use automated build checks to detect syntax errors introduced by rotted logic.
