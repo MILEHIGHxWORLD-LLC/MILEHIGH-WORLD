@@ -141,6 +141,10 @@
 **Learning:** Code rot, especially when it results in multiple overlapping validation blocks, often leads to syntax errors that are overlooked during quick audits. These errors can silently disable security controls.
 **Prevention:** Consolidate security-critical logic into a single, clean, and properly sequenced pipeline: Validate Input -> Check Authorization (Blocklist) -> Execute. Avoid redundant, rotted code blocks that obscure the primary security path.
 
+## 2024-05-28 - [IDOR Protection and Build Hygiene]
+**Vulnerability:** Incomplete IDOR blocklist in SceneDirector.cs and repository pollution via build artifacts (bin/, obj/, .dll, .pdb).
+**Learning:** Security auditing must extend beyond code to include repository hygiene. Committing build artifacts can obscure source changes and introduce supply chain risks.
+**Prevention:** Maintain a strict .gitignore and always audit the protected object list when new high-level orchestrators or managers are added.
 ## 2025-05-28 - [IDOR Case-Bypass and Code Rot in Terminal Logic]
 **Vulnerability:** Insecure Direct Object Reference (IDOR) bypass in `SceneDirector.cs` via case-insensitive object name matching, and potential security validation bypass in `OtisTerminal.cs` due to extreme code rot (redundant loops and orphaned string blocks).
 **Learning:** Security blocklists using default string comparisons are vulnerable to case-variation bypasses (e.g., 'scenedirector' vs 'SceneDirector'). Furthermore, rotted code with duplicate logic paths makes it difficult to ensure that all execution branches are properly validated and sanitized.
