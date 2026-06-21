@@ -14,6 +14,7 @@ namespace Milehigh.Core
         public Transform characterSpawnRoot = null!;
 
         // 🛡️ Sentinel: Hardened blocklist to prevent Insecure Direct Object Reference (IDOR) attacks on critical system managers.
+        // Uses OrdinalIgnoreCase for defense-in-depth against case-insensitive bypass attempts.
         // Initialized with OrdinalIgnoreCase to provide defense-in-depth against case-insensitive IDOR bypass attempts.
         private static readonly HashSet<string> ProtectedSystemObjects = new HashSet<string>(System.StringComparer.OrdinalIgnoreCase)
         {
@@ -72,7 +73,6 @@ namespace Milehigh.Core
 
             _objectCache.Clear();
             // ⚡ Bolt: Use FindObjectsByType with FindObjectsSortMode.None (Unity 2021.3+).
-            // This bypasses the internal sorting by Instance ID, providing an 80-90% speedup for large scenes.
             foreach (var go in UnityEngine.Object.FindObjectsByType<GameObject>(FindObjectsSortMode.None))
             {
                 if (go != null && !string.IsNullOrEmpty(go.name))
@@ -175,6 +175,23 @@ namespace Milehigh.Core
 
         private void ApplyInteraction(ObjectInteraction interaction)
         {
+            // 🛡️ Sentinel: Prevent Insecure Direct Object Reference (IDOR) by blocking critical system managers.
+            if (interaction == null || string.IsNullOrWhiteSpace(interaction.objectId)) return;
+
+            string objectId = interaction.objectId.Trim();
+            if (ProtectedSystemObjects.Contains(objectId))
+            {
+                Debug.LogError($"[Security] Blocked unauthorized interaction attempt to system object: {objectId}");
+                return;
+            }
+
+            GameObject? target = GetCachedObject(objectId);
+            if (target != null)
+            {
+                // 🛡️ Sentinel: Double validation - check the resolved object name against the blocklist
+                if (ProtectedSystemObjects.Contains(target.name.Trim()))
+                {
+                    Debug.LogError($"[Security] Blocked unauthorized interaction attempt to resolved system object: {target.name}");
             // 🛡️ Sentinel: Consolidate security validation into a single, linear pipeline.
             // Prevents NullReferenceException (information disclosure) and IDOR attacks.
             if (interaction == null || string.IsNullOrWhiteSpace(interaction.objectId)) return;

@@ -74,6 +74,43 @@ namespace Milehigh.World.Terminal
             }
         }
 
+        private void ClearTerminal()
+        {
+            if (outputDisplay == null) return;
+            outputDisplay.text = "";
+            outputDisplay.maxVisibleCharacters = 0;
+
+            int hour = DateTime.Now.Hour;
+            string greeting = (hour >= 5 && hour < 12) ? "Good morning, Operator." :
+                             (hour >= 12 && hour < 17) ? "Good afternoon, Operator." :
+                             (hour >= 17 && hour < 21) ? "Good evening, Operator." :
+                             "System active. Eyes on the void, Operator.";
+
+            string timestamp = DateTime.Now.ToString("ddd MMM dd HH:mm:ss");
+            WriteToTerminal($"<color=#AAAAAA>Last login: {timestamp} on ttys000</color>\n" +
+                            $"<color=#00FF00>[SYSTEM]</color>: OTIS Terminal Online. {greeting}\n" +
+                            "Type <color=#00FFFF>'help'</color> for available commands.");
+        }
+
+        private IEnumerator HandleBlinkingCursor()
+        {
+            while (true)
+            {
+                _cursorVisible = !_cursorVisible;
+                UpdateCursorDisplay();
+                yield return GetWait(0.53f);
+            }
+        }
+
+        private void UpdateCursorDisplay()
+        {
+            if (outputDisplay == null || _typewriterCoroutine != null) return;
+
+            outputDisplay.ForceMeshUpdate();
+            int totalChars = outputDisplay.textInfo.characterCount;
+            outputDisplay.maxVisibleCharacters = _cursorVisible ? totalChars : Mathf.Max(0, totalChars - 1);
+        }
+
         private void Update()
         {
             if (commandInput == null || !commandInput.isFocused) return;
@@ -93,6 +130,18 @@ namespace Milehigh.World.Terminal
 
         private void ClearTerminal()
         {
+            string currentInput = commandInput.text.Trim().ToLower();
+
+            if (string.IsNullOrEmpty(currentInput))
+            {
+                if (!string.IsNullOrEmpty(_lastSuggestion))
+                {
+                    commandInput.text = _lastSuggestion;
+                    commandInput.MoveTextEnd(false);
+                    _lastSuggestion = "";
+                }
+                return;
+            }
             if (outputDisplay == null) return;
             outputDisplay.text = "";
             outputDisplay.maxVisibleCharacters = 0;
@@ -232,6 +281,7 @@ namespace Milehigh.World.Terminal
             if (string.IsNullOrEmpty(s)) return t?.Length ?? 0;
             if (string.IsNullOrEmpty(t)) return s.Length;
 
+            int n = s.Length, m = t.Length;
             int n = s.Length;
             int m = t.Length;
 
@@ -254,9 +304,10 @@ namespace Milehigh.World.Terminal
                 for (int j = 0; j < m; j++)
                 {
                     int cost = (s[i] == t[j]) ? 0 : 1;
-                    v1[j + 1] = Mathf.Min(Mathf.Min(v1[j] + 1, v0[j + 1] + 1), v0[j] + cost);
+                    v1[j + 1] = Math.Min(Math.Min(v1[j] + 1, v0[j + 1] + 1), v0[j] + cost);
                 }
 
+                for (int j = 0; j <= m; j++) v0[j] = v1[j];
                 Span<int> temp = v0;
                 v0 = v1;
                 v1 = temp;
@@ -267,6 +318,11 @@ namespace Milehigh.World.Terminal
         private void WriteToTerminal(string message)
         {
             if (outputDisplay == null) return;
+            if (_typewriterCoroutine != null) StopCoroutine(_typewriterCoroutine);
+
+            if (outputDisplay.text.EndsWith("█"))
+                outputDisplay.text = outputDisplay.text.Substring(0, outputDisplay.text.Length - 1);
+
 
             // Consolidate: Stop any existing typewriter to start new one, preventing overlap.
             if (_typewriterCoroutine != null)
@@ -293,8 +349,12 @@ namespace Milehigh.World.Terminal
             outputDisplay.text += message + "█";
             outputDisplay.ForceMeshUpdate();
             int totalChars = outputDisplay.textInfo.characterCount;
-            int endVisibleCount = totalChars - 1; // Exclude cursor from typewriter reveal
+            int endVisibleCount = totalChars - 1;
 
+            for (int i = startVisibleCount; i <= endVisibleCount; i++)
+            {
+                outputDisplay.maxVisibleCharacters = i;
+                if (i > startVisibleCount)
             for (int i = startVisibleCount; i < endVisibleCount; i++)
             {
                 outputDisplay.maxVisibleCharacters = i + 1;
@@ -319,13 +379,15 @@ namespace Milehigh.World.Terminal
                 }
                 else if (c == ',' || c == ':' || c == ';')
                 {
-                    totalDelay += commaDelay;
+                    char c = outputDisplay.textInfo.characterInfo[i - 1].character;
+                    yield return GetWait((c == '.' || c == '!' || c == '?') ? punctuationDelay : typingSpeed);
                 }
-
-                yield return GetWait(totalDelay);
             }
 
             _typewriterCoroutine = null;
+            UpdateCursorDisplay();
+        }
+
             _cursorVisible = true;
             UpdateCursorVisibility();
         }
