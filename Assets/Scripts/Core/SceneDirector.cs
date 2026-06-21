@@ -15,6 +15,7 @@ namespace Milehigh.Core
 
         // 🛡️ Sentinel: Hardened blocklist to prevent Insecure Direct Object Reference (IDOR) attacks on critical system managers.
         // Initialized with OrdinalIgnoreCase to provide defense-in-depth against case-insensitive IDOR bypass attempts.
+        // Uses OrdinalIgnoreCase for defense-in-depth against case-insensitive bypass attempts.
         private static readonly HashSet<string> ProtectedSystemObjects = new HashSet<string>(System.StringComparer.OrdinalIgnoreCase)
         {
             "CampaignManager", "SceneDirector", "CameraManager", "AlliancePowerManager",
@@ -71,10 +72,7 @@ namespace Milehigh.Core
             if (scenario == null) return;
 
             _objectCache.Clear();
-            // ⚡ Bolt: Replace FindObjectsOfType with FindObjectsByType(FindObjectsSortMode.None) for improved performance.
-            // This avoids redundant sorting and uses a more optimized engine path in modern Unity versions.
             // ⚡ Bolt: Use FindObjectsByType with FindObjectsSortMode.None (Unity 2021.3+).
-            // This bypasses the internal sorting by Instance ID, providing an 80-90% speedup for large scenes.
             foreach (var go in UnityEngine.Object.FindObjectsByType<GameObject>(FindObjectsSortMode.None))
             {
                 if (go != null && !string.IsNullOrEmpty(go.name))
@@ -141,9 +139,18 @@ namespace Milehigh.Core
                 return null;
             }
 
-            if (_objectCache.TryGetValue(objectName, out GameObject? obj) && obj != null)
+            // ⚡ Bolt: Fixed negative caching anti-pattern. Using TryGetValue and checking existence
+            // even for null values prevents redundant GameObject.Find calls every frame.
+            // ⚡ Bolt: Use TryGetValue to support negative caching (explicitly storing null in the cache).
+            // This eliminates redundant expensive GameObject.Find calls for objects that are known to be missing.
+            if (_objectCache.TryGetValue(objectName, out GameObject? obj))
             {
-                return obj;
+                // System.Object.ReferenceEquals is required here because Unity's '== null' check returns true
+                // for destroyed native objects. A true null in the cache means we've searched and found nothing.
+                if (System.Object.ReferenceEquals(obj, null)) return null;
+
+                // If the object exists but its native representation is destroyed, we should re-find it.
+                if (obj != null) return obj;
             }
 
             GameObject? foundObj = GameObject.Find(objectName);
@@ -178,6 +185,42 @@ namespace Milehigh.Core
         private void ApplyInteraction(ObjectInteraction interaction)
         {
             // 🛡️ Sentinel: Consolidate security validation into a single, linear pipeline.
+            if (interaction == null || string.IsNullOrWhiteSpace(interaction.objectId)) return;
+
+            string cleanId = interaction.objectId.Trim();
+
+            // IDOR check 1: Input name
+            if (ProtectedSystemObjects.Contains(cleanId))
+            // 🛡️ Sentinel: Prevent Insecure Direct Object Reference (IDOR) by blocking critical system managers.
+            // Consolidate security validation into a single, linear pipeline to prevent NullReferenceException
+            // (information disclosure) and IDOR attacks.
+            if (interaction == null || string.IsNullOrWhiteSpace(interaction.objectId)) return;
+
+            string objectId = interaction.objectId.Trim();
+            if (ProtectedSystemObjects.Contains(objectId))
+            {
+                Debug.LogError($"[Security] Blocked unauthorized interaction attempt to system object: {objectId}");
+                return;
+            }
+
+            GameObject? target = GetCachedObject(objectId);
+            if (target != null)
+            {
+                // IDOR check 2: Resolved object name (Defense-in-depth)
+                string targetName = target.name.Trim();
+                if (ProtectedSystemObjects.Contains(targetName))
+                {
+                // 🛡️ Sentinel: Double validation - check the resolved object name against the blocklist
+                // to prevent potential bypasses if the object was retrieved via a different alias or path
+                // or if it resides in a nested hierarchy (defense-in-depth).
+                string targetName = target.name.Trim();
+                if (ProtectedSystemObjects.Contains(targetName))
+                {
+                    Debug.LogError($"[Security] Blocked unauthorized interaction attempt to resolved system object: {targetName}");
+                if (ProtectedSystemObjects.Contains(target.name.Trim()))
+                {
+                    Debug.LogError($"[Security] Blocked unauthorized interaction attempt to resolved system object: {target.name}");
+            // 🛡️ Sentinel: Consolidate security validation into a single, linear pipeline.
             // Prevents NullReferenceException (information disclosure) and IDOR attacks.
             if (interaction == null || string.IsNullOrWhiteSpace(interaction.objectId)) return;
 
@@ -195,10 +238,14 @@ namespace Milehigh.Core
             if (target != null)
             {
                 // 🛡️ Sentinel: Double validation - check the resolved object name against the blocklist
-                // to prevent potential bypasses if the object was retrieved via a different alias or path.
                 if (ProtectedSystemObjects.Contains(target.name.Trim()))
                 {
                     Debug.LogError($"[Security] Blocked unauthorized interaction attempt to resolved system object: {target.name}");
+                // as defense-in-depth against path-based or hierarchy-based bypasses (e.g. "/CampaignManager").
+                string targetName = target.name.Trim();
+                if (ProtectedSystemObjects.Contains(targetName))
+                {
+                    Debug.LogError($"[Security] Blocked resolved interaction to protected system object: {targetName}");
                     return;
                 }
 
