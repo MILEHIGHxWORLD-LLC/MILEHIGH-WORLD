@@ -229,12 +229,21 @@ namespace Milehigh.World.Terminal
         {
             if (_commandHistory.Count == 0) return;
 
-            // Save current input if we are starting to navigate from the prompt
-            if (_historyIndex == -1 && direction == 1)
+            // Save current input if we are starting to navigate away from the prompt
+            if (_historyIndex == -1)
             {
                 _persistentInput = commandInput.text;
             }
 
+            _historyIndex = Mathf.Clamp(_historyIndex + direction, -1, _commandHistory.Count - 1);
+
+            if (_historyIndex == -1)
+            {
+                commandInput.text = _persistentInput;
+            }
+            else
+            {
+                commandInput.text = _commandHistory[_commandHistory.Count - 1 - _historyIndex];
             int newIndex = Mathf.Clamp(_historyIndex + direction, -1, _commandHistory.Count - 1);
             if (newIndex != _historyIndex)
             {
@@ -242,6 +251,8 @@ namespace Milehigh.World.Terminal
                 commandInput.text = (_historyIndex == -1) ? _persistentInput : _commandHistory[_commandHistory.Count - 1 - _historyIndex];
                 commandInput.MoveTextEnd(false);
             }
+
+            commandInput.MoveTextEnd(false);
         }
 
         private void HandleTabCompletion()
@@ -293,6 +304,8 @@ namespace Milehigh.World.Terminal
                 return;
             }
 
+            // 🛡️ Sentinel: Sanitize input to escape rich text tags BEFORE any validation or echoing.
+            // This prevents UI injection/XSS-like attacks in TextMeshPro.
             // 🛡️ Sentinel: Escaping tags to prevent UI injection.
             // 🛡️ Sentinel: Sanitize input by escaping Rich Text tags to prevent UI injection/DoS.
             string sanitizedInput = input.Replace("<", "&lt;").Replace(">", "&gt;");
@@ -300,6 +313,7 @@ namespace Milehigh.World.Terminal
             // 🛡️ Sentinel: Input validation pipeline: Validate -> Sanitize -> Echo -> Execute.
             if (input.Length > MaxInputLength)
             {
+                WriteToTerminal($"\n<color=#FF0000>[SECURITY]</color>: Input length exceeds limit.");
                 WriteToTerminal("\n<color=#FF0000>[SECURITY]</color>: Input exceeds maximum length.");
                 CleanupInput();
                 return;
@@ -310,12 +324,14 @@ namespace Milehigh.World.Terminal
 
             if (!SafeCommandRegex.IsMatch(input))
             {
+                WriteToTerminal($"\n<color=#FF0000>[SECURITY]</color>: Invalid characters detected.");
                 WriteToTerminal($"\n<color=#888888>> {sanitizedInput}</color>");
                 WriteToTerminal("\n<color=#FF0000>[SECURITY]</color>: Invalid characters detected.");
                 CleanupInput();
                 return;
             }
 
+            // 🎨 Palette: Echo sanitized input to terminal
             // 🎨 Palette: Echo sanitized input using #AAAAAA for accessible contrast.
             WriteToTerminal($"\n<color=#AAAAAA>> {sanitizedInput}</color>");
             // 🎨 Palette: Echo sanitized input after validation passes
@@ -364,6 +380,7 @@ namespace Milehigh.World.Terminal
                 "\n - <color=#00FFFF>clear</color>: Clear terminal." +
                 "\n - <color=#00FFFF>history</color>: Show command history." +
                 "\n - <color=#00FFFF>infiniteration</color>: Execute engine algorithm." +
+                "\n\n<color=#888888>Shortcuts: [Tab] Complete, [Up/Down] History, [Esc] Clear Line, [Ctrl+L] Clear Screen</color>");
                 "\n\n<color=#888888>Shortcuts: [Tab] Completion, [Up/Down] History, [Esc] Clear Line, [Ctrl+L] Clear Screen</color>");
             if (_commandHistory.Count == 0)
             {
@@ -514,6 +531,7 @@ namespace Milehigh.World.Terminal
             return v0[m];
         }
 
+        private void CleanupInput() { if (commandInput != null) { commandInput.text = ""; commandInput.ActivateInputField(); } }
         private void CleanupInput()
         private void WriteToTerminal(string message)
         {
