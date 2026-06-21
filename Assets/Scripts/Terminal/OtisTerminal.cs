@@ -30,6 +30,12 @@ namespace Milehigh.World.Terminal
         [SerializeField] private float punctuationDelay = 0.15f;
         [SerializeField] private float commaDelay = 0.08f;
 
+        [Header("Cursor Settings")]
+        [SerializeField] private float blinkRate = 0.5f;
+        private const char CursorChar = '█';
+        private float _nextBlinkTime;
+        private bool _cursorVisible = true;
+
         private const int MaxInputLength = 256;
         // 🛡️ Sentinel: Use explicit whitespace classes [ \t] instead of \s to prevent newline injection/terminal spoofing.
         private static readonly Regex SafeCommandRegex = new Regex(@"^[a-zA-Z0-9 \t._\-]+$", RegexOptions.Compiled);
@@ -225,6 +231,20 @@ namespace Milehigh.World.Terminal
             }
         }
 
+        private void HandleBlinkingCursor()
+        {
+            if (outputDisplay == null || _typewriterCoroutine != null) return;
+
+            if (Time.unscaledTime >= _nextBlinkTime)
+            {
+                _cursorVisible = !_cursorVisible;
+                _nextBlinkTime = Time.unscaledTime + blinkRate;
+
+                int totalChars = outputDisplay.textInfo.characterCount;
+                outputDisplay.maxVisibleCharacters = _cursorVisible ? totalChars : Mathf.Max(0, totalChars - 1);
+            }
+        }
+
         private void NavigateHistory(int direction)
         {
             if (_commandHistory.Count == 0) return;
@@ -398,6 +418,7 @@ namespace Milehigh.World.Terminal
                     sb.Append("\n ").Append(i + 1).Append(": <color=#00FFFF>").Append(sanitizedEntry).Append("</color>");
                 }
             }
+            WriteToTerminal(output);
             WriteToTerminal(sb.ToString());
         }
 
@@ -427,7 +448,6 @@ namespace Milehigh.World.Terminal
         {
             string suggestion = GetFuzzyMatch(command);
             string suggestionText = !string.IsNullOrEmpty(suggestion) ? $" Did you mean <color=#00FFFF>'{suggestion}'</color>?" : "";
-            WriteToTerminal($"\n<color=#00FF00>[SYSTEM]</color>: <color=#FF0000>Unknown command: '{command}'.{suggestionText} Type <color=#00FFFF>'help'</color> for options.</color>");
             WriteToTerminal($"\n<color=#00FF00>[SYSTEM]</color>: <color=#FF0000>Unknown command: '{command}'.{suggestionText}</color>" +
                 "\n<color=#888888>Tip: Use [Tab] to auto-complete commands or type 'help' for options.</color>");
             _lastSuggestion = GetFuzzyMatch(command);
@@ -470,6 +490,7 @@ namespace Milehigh.World.Terminal
             if (string.IsNullOrEmpty(s)) return t?.Length ?? 0;
             if (string.IsNullOrEmpty(t)) return s.Length;
 
+            int n = s.Length, m = t.Length;
             int n = s.Length;
             int m = t.Length;
             if (n == 0) return m;
@@ -583,6 +604,9 @@ namespace Milehigh.World.Terminal
                 outputDisplay.maxVisibleCharacters = outputDisplay.textInfo.characterCount;
             }
 
+            // 🎨 Palette: Ensure terminal always ends with the blinking retro cursor
+            string finalMessage = message.EndsWith(CursorChar.ToString()) ? message : message + CursorChar;
+            _typewriterCoroutine = StartCoroutine(TypewriterEffect(finalMessage));
             _typewriterCoroutine = StartCoroutine(TypewriterEffect(message));
         }
 
@@ -678,6 +702,13 @@ namespace Milehigh.World.Terminal
                 outputDisplay.maxVisibleCharacters = i + 1;
 
                 if (currentIndex == 0) continue;
+
+                // Ensure cursor is always visible if we're on the last character
+                if (i == endVisibleCount - startVisibleCount)
+                {
+                    _cursorVisible = true;
+                    _nextBlinkTime = Time.unscaledTime + blinkRate;
+                }
 
                 char c = outputDisplay.textInfo.characterInfo[currentIndex - 1].character;
                 if (i > 0)
